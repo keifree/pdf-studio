@@ -1,0 +1,613 @@
+/**
+ * Antigravity PDF Studio - Master Application Controller
+ * Optimized & Cleaned Architecture with Keyboard Shortcuts (Undo/Redo/Esc),
+ * Multi-Tab Engine, Fast Drive Sync, Position Persistence, & Layer Toggles.
+ */
+
+import { PDFViewer } from './pdf-viewer.js';
+import { AnnotationManager } from './annotation-manager.js';
+import { GoogleDriveManager } from './google-drive.js';
+import { PDFExporter } from './pdf-exporter.js';
+
+class App {
+  constructor() {
+    this.tabs = [];
+    this.activeTabId = null;
+    this.readingHistoryKey = 'pdf_studio_reading_history';
+
+    this.viewerContainer = document.getElementById('viewer-container');
+    this.spreadView = document.getElementById('pdf-spread-view');
+    this.commentsContainer = document.getElementById('comments-list');
+    this.toastContainer = document.getElementById('toast-container');
+    this.tabListElement = document.getElementById('tab-list');
+
+    this.viewer = new PDFViewer(this.viewerContainer, this.spreadView);
+    this.annotator = new AnnotationManager(this.commentsContainer);
+    this.driveManager = new GoogleDriveManager();
+
+    this.initEvents();
+    this.initKeyboardShortcuts();
+    this.initSampleTab();
+  }
+
+  getReadingHistory() {
+    try {
+      return JSON.parse(localStorage.getItem(this.readingHistoryKey)) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  saveReadingState(fileKey, state) {
+    if (!fileKey) return;
+    const history = this.getReadingHistory();
+    history[fileKey] = {
+      currentPage: state.currentPage || 1,
+      bindingMode: state.bindingMode || 'rtl',
+      viewMode: state.viewMode || 'spread',
+      hasCoverPage: state.hasCoverPage !== false,
+      updatedAt: Date.now()
+    };
+    try {
+      localStorage.setItem(this.readingHistoryKey, JSON.stringify(history));
+    } catch (e) {}
+  }
+
+  getSavedReadingState(fileKey) {
+    if (!fileKey) return null;
+    const history = this.getReadingHistory();
+    return history[fileKey] || null;
+  }
+
+  getFileStorageKey(tab) {
+    return tab.driveFile?.id ? `drive_${tab.driveFile.id}` : `local_${tab.fileName}`;
+  }
+
+  initKeyboardShortcuts() {
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      // 1. Page Navigation Shortcuts
+      if (e.key === 'ArrowRight') {
+        if (this.viewer.bindingMode === 'rtl') this.viewer.prevPage();
+        else this.viewer.nextPage();
+      } else if (e.key === 'ArrowLeft') {
+        if (this.viewer.bindingMode === 'rtl') this.viewer.nextPage();
+        else this.viewer.prevPage();
+      }
+
+      // 2. Undo (Ctrl+Z) & Redo (Ctrl+Y or Ctrl+Shift+Z)
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key.toLowerCase() === 'z') {
+          if (e.shiftKey) {
+            if (this.annotator.redo()) this.showToast('やり直し (Redo)', 'info');
+          } else {
+            if (this.annotator.undo()) this.showToast('元に戻す (Undo)', 'info');
+          }
+        } else if (e.key.toLowerCase() === 'y') {
+          if (this.annotator.redo()) this.showToast('やり直し (Redo)', 'info');
+        }
+      }
+
+      // 3. Escape key to reset tool to select cursor
+      if (e.key === 'Escape') {
+        this.resetToolToSelect();
+      }
+    });
+  }
+
+  resetToolToSelect() {
+    const toolButtons = document.querySelectorAll('.annot-btn[data-tool]');
+    toolButtons.forEach(b => b.classList.remove('active'));
+    const selectBtn = document.querySelector('.annot-btn[data-tool="select"]');
+    if (selectBtn) selectBtn.classList.add('active');
+    this.annotator.setTool('select');
+  }
+
+  initEvents() {
+    // 1. Page Navigation
+    document.getElementById('btn-prev').onclick = () => this.viewer.prevPage();
+    document.getElementById('btn-next').onclick = () => this.viewer.nextPage();
+
+    this.viewer.onPageChange = (current, total) => {
+      document.getElementById('current-page-num').value = current;
+      document.getElementById('total-pages').textContent = total;
+      const activeTab = this.getActiveTab();
+      if (activeTab) {
+        activeTab.currentPage = current;
+        this.saveReadingState(this.getFileStorageKey(activeTab), activeTab);
+      }
+      setTimeout(() => this.annotator.attachToPageCards(), 100);
+    };
+
+    document.getElementById('current-page-num').onchange = (e) => {
+      const pageNum = parseInt(e.target.value, 10);
+      if (!isNaN(pageNum)) this.viewer.goToPage(pageNum);
+    };
+
+    // 2. View Mode Toggle
+    document.getElementById('opt-view-spread').onclick = (e) => {
+      this.setActivePill('#opt-view-spread, #opt-view-single', e.target);
+      this.viewer.setViewMode('spread');
+      const tab = this.getActiveTab();
+      if (tab) {
+        tab.viewMode = 'spread';
+        this.saveReadingState(this.getFileStorageKey(tab), tab);
+      }
+      document.getElementById('cover-mode-section').style.opacity = '1.0';
+      document.getElementById('cover-mode-section').style.pointerEvents = 'auto';
+      this.showToast('【見開き】モード', 'info');
+    };
+
+    document.getElementById('opt-view-single').onclick = (e) => {
+      this.setActivePill('#opt-view-spread, #opt-view-single', e.target);
+      this.viewer.setViewMode('single');
+      const tab = this.getActiveTab();
+      if (tab) {
+        tab.viewMode = 'single';
+        this.saveReadingState(this.getFileStorageKey(tab), tab);
+      }
+      document.getElementById('cover-mode-section').style.opacity = '0.4';
+      document.getElementById('cover-mode-section').style.pointerEvents = 'none';
+      this.showToast('【単一ページ】モード', 'info');
+    };
+
+    // 3. Binding Direction Toggle
+    document.getElementById('opt-rtl').onclick = (e) => {
+      this.setActivePill('#opt-rtl, #opt-ltr', e.target);
+      this.viewer.setBindingMode('rtl');
+      const tab = this.getActiveTab();
+      if (tab) {
+        tab.bindingMode = 'rtl';
+        this.saveReadingState(this.getFileStorageKey(tab), tab);
+      }
+      this.showToast('右綴じ（RTL）モード', 'info');
+    };
+
+    document.getElementById('opt-ltr').onclick = (e) => {
+      this.setActivePill('#opt-rtl, #opt-ltr', e.target);
+      this.viewer.setBindingMode('ltr');
+      const tab = this.getActiveTab();
+      if (tab) {
+        tab.bindingMode = 'ltr';
+        this.saveReadingState(this.getFileStorageKey(tab), tab);
+      }
+      this.showToast('左綴じ（LTR）モード', 'info');
+    };
+
+    // 4. Cover Page Toggle
+    document.getElementById('opt-cover-on').onclick = (e) => {
+      this.setActivePill('#opt-cover-on, #opt-cover-off', e.target);
+      this.viewer.setHasCoverPage(true);
+      const tab = this.getActiveTab();
+      if (tab) {
+        tab.hasCoverPage = true;
+        this.saveReadingState(this.getFileStorageKey(tab), tab);
+      }
+      this.showToast('【表紙あり】モード', 'info');
+    };
+
+    document.getElementById('opt-cover-off').onclick = (e) => {
+      this.setActivePill('#opt-cover-on, #opt-cover-off', e.target);
+      this.viewer.setHasCoverPage(false);
+      const tab = this.getActiveTab();
+      if (tab) {
+        tab.hasCoverPage = false;
+        this.saveReadingState(this.getFileStorageKey(tab), tab);
+      }
+      this.showToast('【表紙なし】モード', 'info');
+    };
+
+    // 5. Visual Theme Modes & Brightness/Contrast Sliders
+    document.getElementById('theme-normal').onclick = (e) => {
+      this.setActivePill('#theme-normal, #theme-dark, #theme-sepia', e.target);
+      this.viewer.setThemeMode('normal');
+      this.showToast('通常表示テーマ', 'info');
+    };
+
+    document.getElementById('theme-dark').onclick = (e) => {
+      this.setActivePill('#theme-normal, #theme-dark, #theme-sepia', e.target);
+      this.viewer.setThemeMode('dark');
+      this.showToast('目に優しいダークモード', 'info');
+    };
+
+    document.getElementById('theme-sepia').onclick = (e) => {
+      this.setActivePill('#theme-normal, #theme-dark, #theme-sepia', e.target);
+      this.viewer.setThemeMode('sepia');
+      this.showToast('セピア紙面モード', 'info');
+    };
+
+    document.getElementById('brightness-slider').oninput = (e) => {
+      this.viewer.setBrightness(parseInt(e.target.value, 10));
+    };
+
+    document.getElementById('contrast-slider').oninput = (e) => {
+      this.viewer.setContrast(parseInt(e.target.value, 10));
+    };
+
+    // 6. Sidebar Comment Jump & Individual Layer Filter Pills
+    this.annotator.onCommentJump = (pageNum, commentId) => {
+      this.viewer.goToPage(pageNum);
+      setTimeout(() => this.annotator.pulsePinMarker(commentId), 150);
+      this.showToast(`P.${pageNum} の注釈ピンへジャンプしました 📍`, 'info');
+    };
+
+    const layerMap = [
+      { id: 'layer-stroke', key: 'strokes', label: '手書き・ハイライト' },
+      { id: 'layer-shape', key: 'shapes', label: '直線・矢印・引出線' },
+      { id: 'layer-text', key: 'text', label: 'テキスト注釈' },
+      { id: 'layer-pin', key: 'pins', label: 'ピン注釈' }
+    ];
+
+    layerMap.forEach(l => {
+      const btn = document.getElementById(l.id);
+      if (btn) {
+        btn.onclick = () => {
+          const isVisible = this.annotator.toggleLayer(l.key);
+          btn.classList.toggle('active', isVisible);
+          this.showToast(`【${l.label}】を${isVisible ? '表示' : '非表示'}にしました`, 'info');
+        };
+      }
+    });
+
+    // 7. Cache Management Buttons
+    document.getElementById('btn-clear-memory').onclick = () => {
+      if (this.tabs.length <= 1) {
+        this.showToast('解放する非アクティブタブがありません', 'info');
+        return;
+      }
+      const activeTab = this.getActiveTab();
+      this.tabs = [activeTab];
+      this.renderTabsUI();
+      this.showToast('背景タブのメモリを解放しました 🧹', 'success');
+    };
+
+    document.getElementById('btn-clear-history').onclick = () => {
+      if (confirm('保存されている閲覧ページ履歴をすべて初期化しますか？')) {
+        localStorage.removeItem(this.readingHistoryKey);
+        this.showToast('読書履歴キャッシュを消去しました 🗑️', 'success');
+      }
+    };
+
+    // 8. Zoom Controls
+    document.getElementById('zoom-select').onchange = (e) => {
+      const val = e.target.value;
+      if (['fit-width', 'fit-height', '100'].includes(val)) {
+        this.viewer.setScaleMode(val);
+      } else {
+        this.viewer.setScaleMode('custom', parseFloat(val) / 100);
+      }
+    };
+
+    this.viewer.onZoomChange = (mode, percent) => {
+      const zoomSelect = document.getElementById('zoom-select');
+      if (['fit-height', 'fit-width', '100'].includes(mode)) {
+        zoomSelect.value = mode;
+      } else {
+        const optionExists = Array.from(zoomSelect.options).some(opt => opt.value === percent.toString());
+        if (optionExists) {
+          zoomSelect.value = percent.toString();
+        }
+      }
+    };
+
+    // 9. Premium 3x3 Annotation Grid Buttons Toggle
+    const toolButtons = document.querySelectorAll('.annot-btn[data-tool]');
+    toolButtons.forEach(btn => {
+      btn.onclick = () => {
+        toolButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const tool = btn.dataset.tool;
+        this.annotator.setTool(tool);
+
+        const toolLabels = {
+          select: '選択モード',
+          pen: '手書きペン',
+          highlighter: '蛍光ペン',
+          line: '直線描画',
+          arrow: '矢印描画',
+          text: 'テキスト入力',
+          callout: '引出線テキスト',
+          comment: 'ピン注釈追加',
+          eraser: '消しゴム'
+        };
+        this.showToast(`${toolLabels[tool] || tool} モード`, 'info');
+      };
+    });
+
+    const colorDots = document.querySelectorAll('.color-dot');
+    colorDots.forEach(dot => {
+      dot.onclick = () => {
+        const color = dot.dataset.color;
+        this.annotator.setColor(color);
+        colorDots.forEach(d => d.style.borderColor = 'transparent');
+        dot.style.borderColor = '#ffffff';
+      };
+    });
+
+    document.getElementById('custom-color-picker').onchange = (e) => {
+      this.annotator.setColor(e.target.value);
+    };
+
+    document.getElementById('stroke-width-slider').oninput = (e) => {
+      this.annotator.setStrokeWidth(parseInt(e.target.value, 10));
+    };
+
+    // 10. File Loading Events
+    document.getElementById('file-input').onchange = async (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const arrayBuffer = await file.arrayBuffer();
+        this.addTab(file.name, arrayBuffer, null);
+      }
+    };
+
+    document.getElementById('btn-open-file').onclick = () => document.getElementById('file-input').click();
+    document.getElementById('btn-new-tab').onclick = () => document.getElementById('file-input').click();
+
+    // 11. Google Drive Integration
+    document.getElementById('btn-gdrive-open').onclick = async () => {
+      try {
+        if (!this.driveManager.clientId) {
+          this.openDriveConfigModal();
+          return;
+        }
+        await this.driveManager.openPicker();
+      } catch (err) {
+        console.error('Google Drive error:', err);
+        this.showToast(`Google Drive エラー: ${err.message || '連携失敗'}`, 'warning');
+      }
+    };
+
+    this.driveManager.onFileLoaded = (buffer, name) => {
+      const driveFile = this.driveManager.currentDriveFile;
+      this.addTab(name, buffer, driveFile);
+      document.getElementById('drive-status-badge').style.display = 'inline-flex';
+    };
+
+    const saveDriveConfigHandler = async () => {
+      const clientId = document.getElementById('input-gdrive-client-id').value.trim();
+      if (clientId) {
+        this.driveManager.setClientId(clientId);
+        this.closeDriveConfigModal();
+        this.showToast('Google Drive Client IDを保存しました', 'success');
+        try {
+          await this.driveManager.openPicker();
+        } catch (err) {
+          console.error('Google Drive error:', err);
+          this.showToast(`Google Drive エラー: ${err.message || '連携失敗'}`, 'warning');
+        }
+      } else {
+        this.showToast('OAuth Client IDを入力してください', 'warning');
+      }
+    };
+
+    document.getElementById('btn-save-gdrive-config').onclick = saveDriveConfigHandler;
+    document.getElementById('gdrive-config-form').onsubmit = (e) => {
+      e.preventDefault();
+      saveDriveConfigHandler();
+    };
+
+    document.getElementById('btn-close-modal').onclick = () => this.closeDriveConfigModal();
+
+    // 12. Save & Export
+    document.getElementById('btn-save-drive').onclick = async () => {
+      const activeTab = this.getActiveTab();
+      if (!activeTab || !activeTab.buffer) {
+        this.showToast('保存するPDFデータがありません', 'warning');
+        return;
+      }
+
+      try {
+        this.showToast('Google Driveへ上書き保存中...', 'info');
+        this.driveManager.currentDriveFile = activeTab.driveFile;
+        const exportBuffer = await PDFExporter.exportPDF(
+          activeTab.buffer,
+          this.annotator.annotations,
+          this.viewer.bindingMode
+        );
+        const result = await this.driveManager.saveFileToDrive(exportBuffer, activeTab.fileName);
+        activeTab.driveFile = { id: result.id, name: result.name };
+        this.showToast('Google Drive上のファイルを更新しました！', 'success');
+      } catch (err) {
+        console.error(err);
+        this.showToast(`Drive保存エラー: ${err.message}`, 'warning');
+      }
+    };
+
+    document.getElementById('btn-download-pdf').onclick = async () => {
+      const activeTab = this.getActiveTab();
+      if (!activeTab || !activeTab.buffer) return;
+
+      try {
+        this.showToast('右綴じ属性と注釈を埋め込んでダウンロード中...', 'info');
+        const exportBuffer = await PDFExporter.exportPDF(
+          activeTab.buffer,
+          this.annotator.annotations,
+          this.viewer.bindingMode
+        );
+
+        const blob = new Blob([exportBuffer], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `[右綴じ済]_${activeTab.fileName}`;
+        a.click();
+        URL.revokeObjectURL(url);
+        this.showToast('PDFをダウンロードしました', 'success');
+      } catch (err) {
+        console.error(err);
+        this.showToast('PDF書き出しエラー', 'warning');
+      }
+    };
+  }
+
+  setActivePill(selectorGroup, targetElement) {
+    document.querySelectorAll(selectorGroup).forEach(el => el.classList.remove('active'));
+    targetElement.classList.add('active');
+  }
+
+  addTab(fileName, arrayBuffer, driveFile = null) {
+    const tabId = 'tab_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+    
+    const tempTab = { fileName, driveFile };
+    const storageKey = this.getFileStorageKey(tempTab);
+    const savedState = this.getSavedReadingState(storageKey);
+
+    const newTab = {
+      id: tabId,
+      fileName,
+      buffer: arrayBuffer.slice(0),
+      annotations: {},
+      driveFile,
+      currentPage: savedState ? savedState.currentPage : 1,
+      bindingMode: savedState ? savedState.bindingMode : 'rtl',
+      viewMode: savedState ? savedState.viewMode : 'spread',
+      hasCoverPage: savedState ? savedState.hasCoverPage : true
+    };
+
+    this.tabs.push(newTab);
+    this.renderTabsUI();
+    this.switchTab(tabId);
+
+    if (savedState && savedState.currentPage > 1) {
+      this.showToast(`「${fileName}」を前回の続き（P.${savedState.currentPage}）から開きました 🔖`, 'info');
+    } else {
+      this.showToast(`「${fileName}」を開きました`, 'success');
+    }
+  }
+
+  switchTab(tabId) {
+    const targetTab = this.tabs.find(t => t.id === tabId);
+    if (!targetTab) return;
+
+    this.activeTabId = tabId;
+
+    this.viewer.bindingMode = targetTab.bindingMode;
+    this.viewer.viewMode = targetTab.viewMode;
+    this.viewer.hasCoverPage = targetTab.hasCoverPage;
+    this.annotator.annotations = targetTab.annotations;
+
+    this.setActivePill('#opt-rtl, #opt-ltr', document.getElementById(targetTab.bindingMode === 'rtl' ? 'opt-rtl' : 'opt-ltr'));
+    this.setActivePill('#opt-view-spread, #opt-view-single', document.getElementById(targetTab.viewMode === 'spread' ? 'opt-view-spread' : 'opt-view-single'));
+    this.setActivePill('#opt-cover-on, #opt-cover-off', document.getElementById(targetTab.hasCoverPage ? 'opt-cover-on' : 'opt-cover-off'));
+
+    this.renderTabsUI();
+    this.annotator.renderSidebarComments();
+
+    this.viewer.loadDocument(targetTab.buffer.slice(0), targetTab.currentPage);
+  }
+
+  closeTab(tabId, event) {
+    if (event) event.stopPropagation();
+    if (this.tabs.length <= 1) {
+      this.showToast('最後のタブは閉じられません', 'warning');
+      return;
+    }
+
+    const index = this.tabs.findIndex(t => t.id === tabId);
+    if (index !== -1) {
+      this.tabs.splice(index, 1);
+      if (this.activeTabId === tabId) {
+        const nextActiveTab = this.tabs[Math.max(0, index - 1)];
+        this.switchTab(nextActiveTab.id);
+      } else {
+        this.renderTabsUI();
+      }
+    }
+  }
+
+  getActiveTab() {
+    return this.tabs.find(t => t.id === this.activeTabId);
+  }
+
+  renderTabsUI() {
+    this.tabListElement.innerHTML = '';
+    this.tabs.forEach(tab => {
+      const tabEl = document.createElement('div');
+      tabEl.className = `tab-item ${tab.id === this.activeTabId ? 'active' : ''}`;
+      tabEl.onclick = () => this.switchTab(tab.id);
+
+      const icon = tab.driveFile ? '☁️' : '📄';
+      tabEl.innerHTML = `
+        <span>${icon}</span>
+        <span class="tab-title" title="${tab.fileName}">${tab.fileName}</span>
+        <button class="tab-close-btn" title="閉じる">×</button>
+      `;
+
+      tabEl.querySelector('.tab-close-btn').onclick = (e) => this.closeTab(tab.id, e);
+      this.tabListElement.appendChild(tabEl);
+    });
+  }
+
+  async initSampleTab() {
+    try {
+      const { PDFDocument, rgb, StandardFonts } = window.PDFLib;
+      const pdfDoc = await PDFDocument.create();
+      const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+      const pageColors = [
+        { name: '1 (表紙)', bg: rgb(0.12, 0.16, 0.23), text: rgb(1, 1, 1) },
+        { name: '2 (ページA)', bg: rgb(0.96, 0.96, 0.98), text: rgb(0.1, 0.1, 0.2) },
+        { name: '3 (ページB)', bg: rgb(0.96, 0.96, 0.98), text: rgb(0.1, 0.1, 0.2) },
+        { name: '4 (ページC)', bg: rgb(0.96, 0.96, 0.98), text: rgb(0.1, 0.1, 0.2) },
+        { name: '5 (奥付)', bg: rgb(0.18, 0.22, 0.32), text: rgb(1, 1, 1) }
+      ];
+
+      for (let i = 0; i < pageColors.length; i++) {
+        const page = pdfDoc.addPage([500, 700]);
+        const { width, height } = page.getSize();
+        
+        page.drawRectangle({
+          x: 0, y: 0, width, height,
+          color: pageColors[i].bg
+        });
+
+        page.drawText(`ANTIGRAVITY PDF STUDIO`, {
+          x: 40, y: height - 60, size: 16, font, color: pageColors[i].text
+        });
+
+        page.drawText(`PAGE ${pageColors[i].name}`, {
+          x: 40, y: height / 2, size: 26, font, color: pageColors[i].text
+        });
+
+        page.drawText(`Right-Binding Manga & Book Sample`, {
+          x: 40, y: 40, size: 12, font, color: rgb(0.6, 0.6, 0.7)
+        });
+      }
+
+      const pdfBytes = await pdfDoc.save();
+      this.addTab('sample_manga_doc.pdf', pdfBytes.buffer, null);
+    } catch (err) {
+      console.warn('Sample PDF creation fallback:', err);
+    }
+  }
+
+  openDriveConfigModal() {
+    const modal = document.getElementById('gdrive-config-modal');
+    modal.classList.add('open');
+    document.getElementById('input-gdrive-client-id').value = this.driveManager.clientId;
+  }
+
+  closeDriveConfigModal() {
+    document.getElementById('gdrive-config-modal').classList.remove('open');
+  }
+
+  showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `
+      <span>${type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️'}</span>
+      <span>${message}</span>
+    `;
+    this.toastContainer.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 300);
+    }, 3500);
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  window.pdfApp = new App();
+});
