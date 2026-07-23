@@ -85,7 +85,7 @@ export class AnnotationManager {
   }
 
   updateCanvasInteractivity() {
-    const activeTools = ['pen', 'highlighter', 'line', 'arrow', 'text', 'callout', 'eraser', 'comment'];
+    const activeTools = ['pen', 'line', 'arrow', 'text', 'callout', 'eraser', 'comment'];
     const annotCanvases = document.querySelectorAll('.annotation-layer-canvas');
     annotCanvases.forEach(canvas => {
       if (activeTools.includes(this.currentTool)) {
@@ -143,7 +143,7 @@ export class AnnotationManager {
       return;
     }
 
-    if (!['pen', 'highlighter', 'line', 'arrow', 'callout', 'eraser'].includes(this.currentTool)) return;
+    if (!['pen', 'line', 'arrow', 'callout', 'eraser'].includes(this.currentTool)) return;
 
     this.isDrawing = true;
     this.startPt = { x, y };
@@ -171,7 +171,7 @@ export class AnnotationManager {
       return;
     }
 
-    if (['pen', 'highlighter'].includes(this.currentTool)) {
+    if (this.currentTool === 'pen') {
       this.currentPath.push({ x, y });
     }
 
@@ -188,19 +188,19 @@ export class AnnotationManager {
     const rect = canvas.getBoundingClientRect();
     const scaleX = rect.width > 0 ? canvas.width / rect.width : 1;
 
-    if (['pen', 'highlighter'].includes(this.currentTool) && this.currentPath.length > 1) {
-      const isHighlighter = this.currentTool === 'highlighter' || this.currentOpacity < 0.8;
+    if (this.currentTool === 'pen' && this.currentPath.length > 1) {
       const strokeObj = {
-        tool: this.currentTool,
+        tool: 'pen',
         color: this.currentColor,
-        opacity: this.currentOpacity < 1.0 ? this.currentOpacity : (this.currentTool === 'highlighter' ? 0.35 : 1.0),
-        width: this.currentStrokeWidth * scaleX * (isHighlighter ? 3.5 : 1),
+        opacity: this.currentOpacity,
+        width: this.currentStrokeWidth * scaleX,
         path: [...this.currentPath]
       };
       this.annotations[pageNum].strokes.push(strokeObj);
       this.pushHistory('add_stroke', pageNum, strokeObj);
     } else if (['line', 'arrow'].includes(this.currentTool) && this.startPt && this.currentPt) {
       if (Math.hypot(this.currentPt.x - this.startPt.x, this.currentPt.y - this.startPt.y) > 5) {
+        const isHighlighter = this.currentOpacity < 0.8;
         const shapeObj = {
           tool: this.currentTool,
           x1: this.startPt.x,
@@ -209,7 +209,7 @@ export class AnnotationManager {
           y2: this.currentPt.y,
           color: this.currentColor,
           opacity: this.currentOpacity,
-          width: this.currentStrokeWidth * scaleX
+          width: this.currentStrokeWidth * scaleX * (isHighlighter ? 3.5 : 1)
         };
         this.annotations[pageNum].shapes.push(shapeObj);
         this.pushHistory('add_shape', pageNum, shapeObj);
@@ -313,9 +313,9 @@ export class AnnotationManager {
     const ctx = canvas.getContext('2d');
     ctx.save();
 
-    const isHighlighter = this.currentTool === 'highlighter' || this.currentOpacity < 0.8;
+    const isHighlighter = this.currentOpacity < 0.8;
     const baseWidth = this.currentStrokeWidth * scaleX * (isHighlighter ? 3.5 : 1);
-    const alpha = isHighlighter ? 0.35 : this.currentOpacity;
+    const alpha = this.currentOpacity;
 
     ctx.strokeStyle = this.currentColor;
     ctx.fillStyle = this.currentColor;
@@ -323,7 +323,7 @@ export class AnnotationManager {
     ctx.globalAlpha = alpha;
     ctx.lineCap = isHighlighter ? 'square' : 'round';
 
-    if (this.currentTool === 'pen' || (this.currentTool === 'highlighter' && this.highlighterSubMode === 'freehand')) {
+    if (this.currentTool === 'pen') {
       if (this.currentPath && this.currentPath.length > 1) {
         ctx.beginPath();
         ctx.moveTo(this.currentPath[0].x, this.currentPath[0].y);
@@ -332,7 +332,7 @@ export class AnnotationManager {
         }
         ctx.stroke();
       }
-    } else if (this.currentTool === 'line' || (this.currentTool === 'highlighter' && this.highlighterSubMode === 'line')) {
+    } else if (this.currentTool === 'line') {
       ctx.beginPath();
       ctx.moveTo(this.startPt.x, this.startPt.y);
       ctx.lineTo(this.currentPt.x, this.currentPt.y);

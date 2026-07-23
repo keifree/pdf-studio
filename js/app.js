@@ -407,13 +407,6 @@ class App {
     toolButtons.forEach(btn => {
       btn.onclick = () => {
         const tool = btn.dataset.tool;
-
-        if (tool === 'highlighter' && this.annotator.currentTool === 'highlighter') {
-          const mode = this.annotator.toggleHighlighterSubMode();
-          this.showToast(`蛍光ペン: ${mode === 'line' ? '【直線ハイライト】' : '【フリーハンド】'}`, 'info');
-          return;
-        }
-
         toolButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         this.annotator.setTool(tool);
@@ -421,8 +414,7 @@ class App {
         const toolLabels = {
           select: '選択モード',
           pen: '手書きペン',
-          highlighter: `蛍光ペン (${this.annotator.highlighterSubMode === 'line' ? '直線' : 'フリーハンド'})`,
-          line: '直線描画',
+          line: '直線 / 蛍光ハイライト描画',
           arrow: '矢印描画',
           text: 'テキスト入力',
           callout: '引出線テキスト',
