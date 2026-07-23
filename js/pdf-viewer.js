@@ -68,6 +68,7 @@ export class PDFViewer {
     }
 
     this.applyThemeFilters();
+    this.updateSpreadViewCentering();
 
     if (this.onPageChange) {
       this.onPageChange(this.currentPage, this.totalPages);
@@ -76,6 +77,20 @@ export class PDFViewer {
     if (this.onZoomChange) {
       this.onZoomChange(this.scaleMode, Math.round(this.lastComputedScale * 100));
     }
+  }
+
+  updateSpreadViewCentering() {
+    setTimeout(() => {
+      if (!this.spreadView || !this.container) return;
+      const isOverflowingW = this.spreadView.scrollWidth > this.container.clientWidth;
+      const isOverflowingH = this.spreadView.scrollHeight > this.container.clientHeight;
+
+      if (isOverflowingW || isOverflowingH) {
+        this.spreadView.style.margin = '0';
+      } else {
+        this.spreadView.style.margin = 'auto';
+      }
+    }, 50);
   }
 
   calculatePagesForCurrentView() {
