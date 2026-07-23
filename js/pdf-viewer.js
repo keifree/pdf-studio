@@ -160,11 +160,14 @@ export class PDFViewer {
     const containerH = Math.max(100, this.container.clientHeight);
 
     // Margins (account for 12px padding on spread view + extra safety buffer)
-    const availW = containerW - 32;
-    const availH = containerH - 32;
+    const availW = Math.max(50, containerW - 32);
+    const availH = Math.max(50, containerH - 32);
 
-    // Calculate total required width and height for current spread
-    const targetW = (baseViewport.width * visiblePagesCount) + ((visiblePagesCount > 1) ? 8 : 0);
+    // In spread view mode, calculate against 2-page width so all pages (including cover) remain uniform
+    const pagesInSpread = (this.viewMode === 'spread') ? 2 : 1;
+
+    // Calculate total required width and height for spread
+    const targetW = (baseViewport.width * pagesInSpread) + ((pagesInSpread > 1) ? 8 : 0);
     const targetH = baseViewport.height;
 
     const scaleW = availW / targetW;

@@ -76,14 +76,16 @@ body {
 
 /* Header Navbar */
 .app-header {
-  height: var(--header-height);
+  height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: max(12px, env(safe-area-inset-left, 0px));
+  padding-right: max(12px, env(safe-area-inset-right, 0px));
   background: var(--bg-surface);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
   z-index: 100;
   box-shadow: var(--shadow-sm);
 }
@@ -953,4 +955,27 @@ body {
   width: 24px;
   height: 24px;
   fill: currentColor;
+}
+
+/* Responsive Mobile & Tablet Drawer Overlays */
+@media (max-width: 1024px) {
+  .left-dock {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    height: 100%;
+    z-index: 600;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.6);
+  }
+
+  .right-sidebar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    height: 100%;
+    z-index: 600;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.6);
+  }
 }
