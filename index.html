@@ -36,7 +36,7 @@
         <div class="logo-icon">
           <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
         </div>
-        <div class="logo-text">PDF Studio</div>
+        <div class="logo-text">PDF Studio <span style="font-size: 0.65rem; color: #818cf8; font-weight: normal; margin-left: 4px;">v1.0.5</span></div>
         <span id="drive-status-badge" class="drive-badge" style="display: none; margin-left: 8px;">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg> Drive接続中
         </span>
@@ -124,7 +124,7 @@
 
         <!-- Section 4: Page Navigation -->
         <div class="dock-section">
-          <div class="dock-section-title">ページ移動 (ホイール移動可)</div>
+          <div class="dock-section-title">ページ移動 (スワイプ移動可)</div>
           <div class="page-nav-box">
             <button id="btn-prev" class="tool-btn" title="前のページ (← / ホイール上)">
               <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
@@ -188,15 +188,6 @@
 
       <!-- Central Maximized PDF Viewer Container -->
       <div id="viewer-container">
-        <!-- iPad Touch Tap Zones (Screen Edge Page Turners) -->
-        <div id="tap-zone-left" class="tap-zone tap-zone-left" title="ページ切り替え">
-          <div class="tap-zone-ripple">◀</div>
-        </div>
-
-        <div id="tap-zone-right" class="tap-zone tap-zone-right" title="ページ切り替え">
-          <div class="tap-zone-ripple">▶</div>
-        </div>
-
         <!-- Floating Bottom Fast-Scrum Page Slider & One-Touch Reset -->
         <div id="floating-page-bar" class="floating-page-bar">
           <button id="btn-quick-reset-zoom" class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.72rem; border-radius: var(--radius-full);" title="全体表示（元のサイズ）に一発でリセット">

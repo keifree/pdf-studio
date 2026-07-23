@@ -144,11 +144,9 @@ class App {
         } else if (mode === 'fit-width') {
           zoomSelect.value = 'fit-width';
         } else {
-          // Sync exact numeric scale (50%, 75%, 100%, 150%, 200% or Custom)
           const valStr = String(percent);
           let matchOpt = Array.from(zoomSelect.options).find(opt => opt.value === valStr);
           if (!matchOpt) {
-            // Remove previous custom option if exists
             const prevCustom = zoomSelect.querySelector('option.custom-opt');
             if (prevCustom) prevCustom.remove();
 
@@ -174,35 +172,6 @@ class App {
         }
       }
     };
-
-    // iPad Touch Tap Zones (Screen Edge Page Turners - Highest Priority Touch Listeners)
-    const tapLeft = document.getElementById('tap-zone-left');
-    const tapRight = document.getElementById('tap-zone-right');
-
-    const handleTapTurn = (isLeft, e) => {
-      if (e) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-      if (this.annotator.currentTool !== 'select') return;
-      if (isLeft) {
-        if (this.viewer.bindingMode === 'rtl') this.viewer.nextPage();
-        else this.viewer.prevPage();
-      } else {
-        if (this.viewer.bindingMode === 'rtl') this.viewer.prevPage();
-        else this.viewer.nextPage();
-      }
-    };
-
-    if (tapLeft) {
-      tapLeft.addEventListener('click', (e) => handleTapTurn(true, e), true);
-      tapLeft.addEventListener('touchend', (e) => handleTapTurn(true, e), true);
-    }
-
-    if (tapRight) {
-      tapRight.addEventListener('click', (e) => handleTapTurn(false, e), true);
-      tapRight.addEventListener('touchend', (e) => handleTapTurn(false, e), true);
-    }
 
     // Touch Swipe / Flick Gesture Handler
     let touchStartX = 0;
