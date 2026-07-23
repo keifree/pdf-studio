@@ -559,12 +559,43 @@ body {
   height: 100%;
 }
 
-.stroke-width-mini {
-  width: 34px;
-  cursor: pointer;
+.width-presets {
+  display: flex;
+  gap: 2px;
 }
-.floating-draw-toolbar.horizontal .stroke-width-mini {
-  width: 42px;
+
+.floating-draw-toolbar.vertical .width-presets {
+  flex-direction: column;
+}
+
+.floating-draw-toolbar.horizontal .width-presets {
+  flex-direction: row;
+}
+
+.width-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  min-width: 22px;
+  text-align: center;
+  touch-action: manipulation;
+  transition: all 0.15s;
+}
+
+.width-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+}
+
+.width-btn.active {
+  background: var(--accent-light);
+  color: white;
+  border-color: var(--accent-light);
+  font-weight: 600;
 }
 
 /* Maximized Central Viewport Container */

@@ -402,19 +402,26 @@ class App {
       }
     };
 
-    // 9. Premium 3x3 Annotation Grid Buttons Toggle
+    // 9. Annotation Tool Buttons Toggle
     const toolButtons = document.querySelectorAll('.annot-btn[data-tool]');
     toolButtons.forEach(btn => {
       btn.onclick = () => {
+        const tool = btn.dataset.tool;
+
+        if (tool === 'highlighter' && this.annotator.currentTool === 'highlighter') {
+          const mode = this.annotator.toggleHighlighterSubMode();
+          this.showToast(`蛍光ペン: ${mode === 'line' ? '【直線ハイライト】' : '【フリーハンド】'}`, 'info');
+          return;
+        }
+
         toolButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        const tool = btn.dataset.tool;
         this.annotator.setTool(tool);
 
         const toolLabels = {
           select: '選択モード',
           pen: '手書きペン',
-          highlighter: '蛍光ペン',
+          highlighter: `蛍光ペン (${this.annotator.highlighterSubMode === 'line' ? '直線' : 'フリーハンド'})`,
           line: '直線描画',
           arrow: '矢印描画',
           text: 'テキスト入力',
@@ -441,9 +448,30 @@ class App {
       colorPicker.onchange = (e) => this.annotator.setColor(e.target.value);
     }
 
-    const strokeSlider = document.getElementById('stroke-width-slider');
-    if (strokeSlider) {
-      strokeSlider.oninput = (e) => this.annotator.setStrokeWidth(parseInt(e.target.value, 10));
+    // 1-Tap Stroke Width Preset Buttons
+    const widthBtns = document.querySelectorAll('.width-btn');
+    widthBtns.forEach(btn => {
+      btn.onclick = () => {
+        const w = parseInt(btn.dataset.width, 10);
+        this.annotator.setStrokeWidth(w);
+        widthBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const leftStroke = document.getElementById('left-stroke-width-slider');
+        const strokeLabel = document.getElementById('stroke-width-val-label');
+        if (leftStroke) leftStroke.value = w;
+        if (strokeLabel) strokeLabel.textContent = `${w}px`;
+        this.showToast(`線の太さ: ${w}px`, 'info');
+      };
+    });
+
+    const leftStroke = document.getElementById('left-stroke-width-slider');
+    const strokeLabel = document.getElementById('stroke-width-val-label');
+    if (leftStroke) {
+      leftStroke.oninput = (e) => {
+        const numVal = parseInt(e.target.value, 10);
+        this.annotator.setStrokeWidth(numVal);
+        if (strokeLabel) strokeLabel.textContent = `${numVal}px`;
+      };
     }
 
     const opacitySlider = document.getElementById('opacity-slider');
@@ -568,7 +596,50 @@ class App {
   initDraggableToolbar() {
     const toolbar = document.getElementById('floating-draw-toolbar');
     const handle = document.getElementById('draw-toolbar-drag-handle');
+    const orientBtn = document.getElementById('btn-toggle-toolbar-orient');
     if (!toolbar || !handle) return;
+
+    // Load saved orientation layout (vertical / horizontal)
+    const savedOrient = localStorage.getItem('draw_toolbar_orient') || 'vertical';
+    toolbar.classList.remove('vertical', 'horizontal');
+    toolbar.classList.add(savedOrient);
+
+    // Clamp toolbar so it never goes offscreen on iPad rotation or resize
+    const clampToolbarToWindow = () => {
+      const rect = toolbar.getBoundingClientRect();
+      const maxLeft = Math.max(5, window.innerWidth - rect.width - 5);
+      const maxTop = Math.max(5, window.innerHeight - rect.height - 5);
+
+      let currentLeft = parseFloat(toolbar.style.left) || rect.left;
+      let currentTop = parseFloat(toolbar.style.top) || rect.top;
+
+      currentLeft = Math.min(Math.max(5, currentLeft), maxLeft);
+      currentTop = Math.min(Math.max(5, currentTop), maxTop);
+
+      toolbar.style.left = `${currentLeft}px`;
+      toolbar.style.top = `${currentTop}px`;
+      toolbar.style.right = 'auto';
+    };
+
+    if (orientBtn) {
+      const doToggle = (e) => {
+        if (e) {
+          e.stopPropagation();
+          e.preventDefault();
+        }
+        const isCurrentlyVert = toolbar.classList.contains('vertical');
+        const nextOrient = isCurrentlyVert ? 'horizontal' : 'vertical';
+        toolbar.classList.remove('vertical', 'horizontal');
+        toolbar.classList.add(nextOrient);
+        localStorage.setItem('draw_toolbar_orient', nextOrient);
+        clampToolbarToWindow();
+        this.showToast(`ツールバー: ${nextOrient === 'horizontal' ? '横型' : '縦型'}レイアウト`, 'info');
+      };
+
+      orientBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+      orientBtn.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: false });
+      orientBtn.onclick = doToggle;
+    }
 
     const savedPos = localStorage.getItem('draw_toolbar_pos');
     if (savedPos) {
@@ -578,6 +649,19 @@ class App {
         toolbar.style.top = `${top}px`;
         toolbar.style.right = 'auto';
       } catch (e) {}
+    }
+
+    const handleResizeOrRotate = () => {
+      clampToolbarToWindow();
+      setTimeout(clampToolbarToWindow, 150);
+      setTimeout(clampToolbarToWindow, 450);
+    };
+
+    clampToolbarToWindow();
+    window.addEventListener('resize', handleResizeOrRotate);
+    window.addEventListener('orientationchange', handleResizeOrRotate);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResizeOrRotate);
     }
 
     let isDragging = false;

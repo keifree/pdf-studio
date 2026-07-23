@@ -3,40 +3,33 @@
  * Caches core app assets for offline launch & satisfies PWA installation criteria.
  */
 
-const CACHE_NAME = 'pdf-studio-v40';
-const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
-  './style.css',
-  './manifest.json',
-  './js/app.js',
-  './js/pdf-viewer.js',
-  './js/annotation-manager.js',
-  './js/google-drive.js',
-  './js/pdf-exporter.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
-  'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js'
-];
+const CACHE_NAME = 'pdf-studio-v60';
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE).catch(err => {
-        console.warn('Cache addAll warning:', err);
-      });
+      return cache.addAll([
+        './',
+        './index.html',
+        './style.css',
+        './js/app.js',
+        './js/pdf-viewer.js',
+        './js/annotation-manager.js',
+        './js/pdf-exporter.js',
+        './js/drive-manager.js'
+      ]);
     })
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
+    caches.keys().then((cacheNames) => {
       return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
           }
         })
       );

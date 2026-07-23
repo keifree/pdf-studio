@@ -20,7 +20,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="./style.css?v=2.5.0">
+  <link rel="stylesheet" href="./style.css?v=3.0.0">
 
   <!-- PDF.js Engine CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -36,7 +36,7 @@
         <div class="logo-icon">
           <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
         </div>
-        <div class="logo-text">PDF Studio <span style="font-size: 0.65rem; color: #818cf8; font-weight: normal; margin-left: 4px;">v2.5.0</span></div>
+        <div class="logo-text">PDF Studio <span style="font-size: 0.65rem; color: #818cf8; font-weight: normal; margin-left: 4px;">v3.0.0</span></div>
         <span id="drive-status-badge" class="drive-badge" style="display: none; margin-left: 8px;">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg> Drive接続中
         </span>
@@ -233,13 +233,10 @@
             <button class="annot-btn active" data-tool="select" title="選択・移動モード (Esc)">
               <svg viewBox="0 0 24 24"><path d="M7 2l12 11.2-5.8.5 3.3 7.3-2.2 1-3.2-7.4L7 18.5V2z"/></svg>
             </button>
-            <button class="annot-btn" data-tool="pen" title="ペン">
+            <button class="annot-btn" data-tool="pen" title="手書きペン">
               <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
             </button>
-            <button class="annot-btn" data-tool="highlighter" title="蛍光ペン (2回タップでフリーハンド/直線ハイライト切替)">
-              <svg viewBox="0 0 24 24"><path d="M18.5 2.5L16 0l-8.5 8.5 2.5 2.5L18.5 2.5zM2 22h4l9-9-4-4-9 9v4z"/></svg>
-            </button>
-            <button class="annot-btn" data-tool="line" title="直線 (ドラッグ描画)">
+            <button class="annot-btn" data-tool="line" title="直線 (左サイドバーの透過度で蛍光ハイライト化)">
               <svg viewBox="0 0 24 24"><path d="M4 20L20 4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
             </button>
             <button class="annot-btn" data-tool="arrow" title="矢印描画">
@@ -259,12 +256,19 @@
             </button>
           </div>
 
-          <!-- Color Dots & Stroke Width Slider -->
+          <!-- Color Dots & 1-Tap Stroke Width Selector -->
           <div class="color-picker-wrapper-compact">
             <div class="color-dot" data-color="#f43f5e" style="background: #f43f5e; border-color: white;" title="赤"></div>
             <div class="color-dot" data-color="#3b82f6" style="background: #3b82f6;" title="青"></div>
             <input type="color" id="custom-color-picker" value="#f43f5e" title="カラーパレット" style="width:18px; height:18px; border:none; background:transparent; cursor:pointer;">
-            <input type="range" id="toolbar-stroke-width" min="1" max="20" value="3" title="線の太さ調整" class="stroke-width-mini">
+            
+            <!-- 1-Tap Width Pills -->
+            <div class="width-presets" title="線の太さ切替">
+              <button class="width-btn" data-width="1" title="細線 1px">細</button>
+              <button class="width-btn active" data-width="3" title="標準 3px">中</button>
+              <button class="width-btn" data-width="8" title="太線 8px">太</button>
+              <button class="width-btn" data-width="16" title="極太 16px">極</button>
+            </div>
           </div>
         </div>
 
@@ -329,7 +333,7 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=2.5.0')
+        navigator.serviceWorker.register('./sw.js?v=3.0.0')
           .then(reg => {
             console.log('PWA ServiceWorker registered');
             reg.update(); // Force check for new sw.js
@@ -339,6 +343,6 @@
     }
   </script>
 
-  <script type="module" src="./js/app.js?v=2.5.0"></script>
+  <script type="module" src="./js/app.js?v=3.0.0"></script>
 </body>
 </html>

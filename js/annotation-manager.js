@@ -13,6 +13,7 @@ export class AnnotationManager {
     this.currentStrokeWidth = 3;
     this.currentFontSize = 14;
     this.currentOpacity = 1.0;
+    this.highlighterSubMode = 'line'; // 'line' or 'freehand'
 
     this.layerVisibility = {
       strokes: true,
@@ -44,11 +45,22 @@ export class AnnotationManager {
   }
 
   setStrokeWidth(width) {
-    this.currentStrokeWidth = width;
+    const num = parseInt(width, 10);
+    if (!isNaN(num) && num >= 1) {
+      this.currentStrokeWidth = num;
+    }
   }
 
   setOpacity(val) {
-    this.currentOpacity = Math.min(Math.max(0.1, val), 1.0);
+    const num = parseFloat(val);
+    if (!isNaN(num)) {
+      this.currentOpacity = Math.min(Math.max(0.1, num), 1.0);
+    }
+  }
+
+  toggleHighlighterSubMode() {
+    this.highlighterSubMode = this.highlighterSubMode === 'line' ? 'freehand' : 'line';
+    return this.highlighterSubMode;
   }
 
   toggleLayer(layerName) {
@@ -295,33 +307,49 @@ export class AnnotationManager {
     return true;
   }
 
-  drawActiveShapePreview(canvas) {
+  drawActiveShapePreview(canvas, scaleX = 1) {
     if (!this.startPt || !this.currentPt) return;
 
     const ctx = canvas.getContext('2d');
     ctx.save();
+
+    const isHighlighter = this.currentTool === 'highlighter' || this.currentOpacity < 0.8;
+    const baseWidth = this.currentStrokeWidth * scaleX * (isHighlighter ? 3.5 : 1);
+    const alpha = isHighlighter ? 0.35 : this.currentOpacity;
+
     ctx.strokeStyle = this.currentColor;
     ctx.fillStyle = this.currentColor;
-    ctx.lineWidth = this.currentStrokeWidth;
+    ctx.lineWidth = baseWidth;
+    ctx.globalAlpha = alpha;
+    ctx.lineCap = isHighlighter ? 'square' : 'round';
 
-    if (this.currentTool === 'line') {
+    if (this.currentTool === 'pen' || (this.currentTool === 'highlighter' && this.highlighterSubMode === 'freehand')) {
+      if (this.currentPath && this.currentPath.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(this.currentPath[0].x, this.currentPath[0].y);
+        for (let i = 1; i < this.currentPath.length; i++) {
+          ctx.lineTo(this.currentPath[i].x, this.currentPath[i].y);
+        }
+        ctx.stroke();
+      }
+    } else if (this.currentTool === 'line' || (this.currentTool === 'highlighter' && this.highlighterSubMode === 'line')) {
       ctx.beginPath();
       ctx.moveTo(this.startPt.x, this.startPt.y);
       ctx.lineTo(this.currentPt.x, this.currentPt.y);
       ctx.stroke();
     } else if (this.currentTool === 'arrow') {
-      this.drawArrowOnCanvas(ctx, this.startPt.x, this.startPt.y, this.currentPt.x, this.currentPt.y, this.currentStrokeWidth, this.currentColor);
+      this.drawArrowOnCanvas(ctx, this.startPt.x, this.startPt.y, this.currentPt.x, this.currentPt.y, baseWidth, this.currentColor);
     } else if (this.currentTool === 'callout') {
-      this.drawArrowOnCanvas(ctx, this.currentPt.x, this.currentPt.y, this.startPt.x, this.startPt.y, 2, this.currentColor);
+      this.drawArrowOnCanvas(ctx, this.currentPt.x, this.currentPt.y, this.startPt.x, this.startPt.y, 2 * scaleX, this.currentColor);
       
       ctx.fillStyle = 'rgba(30, 41, 59, 0.85)';
       ctx.strokeStyle = this.currentColor;
-      ctx.lineWidth = 1;
-      ctx.fillRect(this.currentPt.x, this.currentPt.y - 20, 100, 24);
-      ctx.strokeRect(this.currentPt.x, this.currentPt.y - 20, 100, 24);
+      ctx.lineWidth = 1 * scaleX;
+      ctx.fillRect(this.currentPt.x, this.currentPt.y - 20 * scaleX, 100 * scaleX, 24 * scaleX);
+      ctx.strokeRect(this.currentPt.x, this.currentPt.y - 20 * scaleX, 100 * scaleX, 24 * scaleX);
       ctx.fillStyle = '#ffffff';
-      ctx.font = '12px sans-serif';
-      ctx.fillText('引出線テキスト', this.currentPt.x + 6, this.currentPt.y - 4);
+      ctx.font = `${12 * scaleX}px sans-serif`;
+      ctx.fillText('引出線テキスト', this.currentPt.x + 6 * scaleX, this.currentPt.y - 4 * scaleX);
     }
 
     ctx.restore();
@@ -357,14 +385,18 @@ export class AnnotationManager {
     // 2. Redraw Vector Shapes (Lines, Arrows, Callouts)
     if (this.layerVisibility.shapes) {
       (pageData.shapes || []).forEach(shape => {
-        ctx.save();
-        if (shape.tool === 'line') {
+        if (shape.tool === 'line' || shape.tool === 'highlighter_line') {
+          const isHighlighter = shape.opacity !== undefined && shape.opacity < 0.8;
+          ctx.save();
           ctx.beginPath();
           ctx.moveTo(shape.x1, shape.y1);
           ctx.lineTo(shape.x2, shape.y2);
+          ctx.globalAlpha = shape.opacity !== undefined ? shape.opacity : 1.0;
           ctx.strokeStyle = shape.color;
           ctx.lineWidth = shape.width;
+          ctx.lineCap = isHighlighter ? 'square' : 'round';
           ctx.stroke();
+          ctx.restore();
         } else if (shape.tool === 'arrow') {
           this.drawArrowOnCanvas(ctx, shape.x1, shape.y1, shape.x2, shape.y2, shape.width, shape.color);
         } else if (shape.tool === 'callout') {
