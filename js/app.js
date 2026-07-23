@@ -436,13 +436,15 @@ class App {
       };
     });
 
-    document.getElementById('custom-color-picker').onchange = (e) => {
-      this.annotator.setColor(e.target.value);
-    };
+    const colorPicker = document.getElementById('custom-color-picker');
+    if (colorPicker) {
+      colorPicker.onchange = (e) => this.annotator.setColor(e.target.value);
+    }
 
-    document.getElementById('stroke-width-slider').oninput = (e) => {
-      this.annotator.setStrokeWidth(parseInt(e.target.value, 10));
-    };
+    const strokeSlider = document.getElementById('stroke-width-slider');
+    if (strokeSlider) {
+      strokeSlider.oninput = (e) => this.annotator.setStrokeWidth(parseInt(e.target.value, 10));
+    }
 
     const opacitySlider = document.getElementById('opacity-slider');
     const opacityLabel = document.getElementById('opacity-val-label');
@@ -453,78 +455,6 @@ class App {
         this.annotator.setOpacity(val / 100);
       };
     }
-  }
-
-  initDraggableToolbar() {
-    const toolbar = document.getElementById('floating-draw-toolbar');
-    const handle = document.getElementById('draw-toolbar-drag-handle');
-    if (!toolbar || !handle) return;
-
-    const savedPos = localStorage.getItem('draw_toolbar_pos');
-    if (savedPos) {
-      try {
-        const { left, top } = JSON.parse(savedPos);
-        toolbar.style.left = `${left}px`;
-        toolbar.style.top = `${top}px`;
-        toolbar.style.right = 'auto';
-      } catch (e) {}
-    }
-
-    let isDragging = false;
-    let offsetX = 0;
-    let offsetY = 0;
-
-    const startDrag = (clientX, clientY) => {
-      isDragging = true;
-      const rect = toolbar.getBoundingClientRect();
-      offsetX = clientX - rect.left;
-      offsetY = clientY - rect.top;
-      toolbar.style.right = 'auto';
-    };
-
-    const moveDrag = (clientX, clientY) => {
-      if (!isDragging) return;
-      let newX = clientX - offsetX;
-      let newY = clientY - offsetY;
-
-      newX = Math.min(Math.max(5, newX), window.innerWidth - toolbar.offsetWidth - 5);
-      newY = Math.min(Math.max(5, newY), window.innerHeight - toolbar.offsetHeight - 5);
-
-      toolbar.style.left = `${newX}px`;
-      toolbar.style.top = `${newY}px`;
-    };
-
-    const endDrag = () => {
-      if (!isDragging) return;
-      isDragging = false;
-      const rect = toolbar.getBoundingClientRect();
-      localStorage.setItem('draw_toolbar_pos', JSON.stringify({ left: rect.left, top: rect.top }));
-    };
-
-    handle.addEventListener('touchstart', (e) => {
-      if (e.touches.length === 1) {
-        startDrag(e.touches[0].clientX, e.touches[0].clientY);
-      }
-    }, { passive: true });
-
-    window.addEventListener('touchmove', (e) => {
-      if (isDragging && e.touches.length === 1) {
-        moveDrag(e.touches[0].clientX, e.touches[0].clientY);
-      }
-    }, { passive: true });
-
-    window.addEventListener('touchend', endDrag, { passive: true });
-
-    handle.addEventListener('mousedown', (e) => {
-      startDrag(e.clientX, e.clientY);
-    });
-
-    window.addEventListener('mousemove', (e) => {
-      if (isDragging) moveDrag(e.clientX, e.clientY);
-    });
-
-    window.addEventListener('mouseup', endDrag);
-  }
 
     // 10. File Loading Events
     document.getElementById('file-input').onchange = async (e) => {
@@ -633,6 +563,77 @@ class App {
         this.showToast('PDF書き出しエラー', 'warning');
       }
     };
+  }
+
+  initDraggableToolbar() {
+    const toolbar = document.getElementById('floating-draw-toolbar');
+    const handle = document.getElementById('draw-toolbar-drag-handle');
+    if (!toolbar || !handle) return;
+
+    const savedPos = localStorage.getItem('draw_toolbar_pos');
+    if (savedPos) {
+      try {
+        const { left, top } = JSON.parse(savedPos);
+        toolbar.style.left = `${left}px`;
+        toolbar.style.top = `${top}px`;
+        toolbar.style.right = 'auto';
+      } catch (e) {}
+    }
+
+    let isDragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    const startDrag = (clientX, clientY) => {
+      isDragging = true;
+      const rect = toolbar.getBoundingClientRect();
+      offsetX = clientX - rect.left;
+      offsetY = clientY - rect.top;
+      toolbar.style.right = 'auto';
+    };
+
+    const moveDrag = (clientX, clientY) => {
+      if (!isDragging) return;
+      let newX = clientX - offsetX;
+      let newY = clientY - offsetY;
+
+      newX = Math.min(Math.max(5, newX), window.innerWidth - toolbar.offsetWidth - 5);
+      newY = Math.min(Math.max(5, newY), window.innerHeight - toolbar.offsetHeight - 5);
+
+      toolbar.style.left = `${newX}px`;
+      toolbar.style.top = `${newY}px`;
+    };
+
+    const endDrag = () => {
+      if (!isDragging) return;
+      isDragging = false;
+      const rect = toolbar.getBoundingClientRect();
+      localStorage.setItem('draw_toolbar_pos', JSON.stringify({ left: rect.left, top: rect.top }));
+    };
+
+    handle.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        startDrag(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      if (isDragging && e.touches.length === 1) {
+        moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', endDrag, { passive: true });
+
+    handle.addEventListener('mousedown', (e) => {
+      startDrag(e.clientX, e.clientY);
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (isDragging) moveDrag(e.clientX, e.clientY);
+    });
+
+    window.addEventListener('mouseup', endDrag);
   }
 
   setActivePill(selectorGroup, targetElement) {
