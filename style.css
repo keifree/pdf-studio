@@ -454,33 +454,84 @@ body {
   padding: 6px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7);
   display: flex;
-  flex-direction: column;
   align-items: center;
   gap: 6px;
   user-select: none;
   touch-action: none;
+  transition: width 0.15s ease, height 0.15s ease;
+}
+
+.floating-draw-toolbar.vertical {
+  flex-direction: column;
+}
+
+.floating-draw-toolbar.horizontal {
+  flex-direction: row;
+}
+
+.drag-handle-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.floating-draw-toolbar.vertical .drag-handle-bar {
+  flex-direction: row;
+  width: 100%;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.floating-draw-toolbar.horizontal .drag-handle-bar {
+  flex-direction: column;
+  height: 100%;
+  padding-right: 6px;
+  border-right: 1px solid var(--border-color);
 }
 
 .drag-handle {
-  width: 100%;
-  height: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: grab;
   color: var(--text-muted);
   opacity: 0.7;
-  padding-bottom: 2px;
 }
 .drag-handle:active {
   cursor: grabbing;
   color: var(--accent-light);
 }
 
+.orient-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0 3px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s;
+}
+.orient-btn:hover {
+  color: var(--accent-light);
+  background: rgba(255, 255, 255, 0.1);
+}
+
 .annot-tools-compact {
   display: flex;
-  flex-direction: column;
   gap: 4px;
+}
+
+.floating-draw-toolbar.vertical .annot-tools-compact {
+  flex-direction: column;
+}
+
+.floating-draw-toolbar.horizontal .annot-tools-compact {
+  flex-direction: row;
 }
 
 .annot-tools-compact .annot-btn {
@@ -490,12 +541,30 @@ body {
 
 .color-picker-wrapper-compact {
   display: flex;
-  flex-direction: column;
   align-items: center;
   gap: 6px;
+}
+
+.floating-draw-toolbar.vertical .color-picker-wrapper-compact {
+  flex-direction: column;
   padding-top: 6px;
   border-top: 1px solid var(--border-color);
   width: 100%;
+}
+
+.floating-draw-toolbar.horizontal .color-picker-wrapper-compact {
+  flex-direction: row;
+  padding-left: 6px;
+  border-left: 1px solid var(--border-color);
+  height: 100%;
+}
+
+.stroke-width-mini {
+  width: 34px;
+  cursor: pointer;
+}
+.floating-draw-toolbar.horizontal .stroke-width-mini {
+  width: 42px;
 }
 
 /* Maximized Central Viewport Container */
