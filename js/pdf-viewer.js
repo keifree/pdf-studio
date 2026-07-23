@@ -1,8 +1,8 @@
 /**
  * Antigravity PDF Studio - Core PDF.js Rendering Engine
  * Supports 2-Page Spread Layout, RTL Right-Binding, Cover Offset Toggle,
- * Eye-Soothing Deep Slate Dark Mode (Soft Off-White Text on Dark Slate),
- * Sepia Paper Theme, Brightness & Contrast Sliders, Correct Zoom Dropdown Sync.
+ * iPad Touch Pinch-to-Zoom (2-finger scale), Edge-to-Edge Responsive Fit,
+ * Eye-Soothing Soft Off-White Dark Mode, Brightness & Contrast Sliders.
  */
 
 export class PDFViewer {
@@ -32,6 +32,7 @@ export class PDFViewer {
     this.onZoomChange = null;
 
     this.initMouseWheelEvents();
+    this.initTouchPinchEvents();
   }
 
   async loadDocument(dataBuffer, initialPage = 1) {
@@ -56,7 +57,7 @@ export class PDFViewer {
     const pagesToRender = this.calculatePagesForCurrentView();
 
     for (const pageNum of pagesToRender) {
-      const card = await this.renderSinglePageCard(pageNum);
+      const card = await this.renderSinglePageCard(pageNum, pagesToRender.length);
       this.spreadView.appendChild(card);
     }
 
@@ -98,11 +99,11 @@ export class PDFViewer {
     return result;
   }
 
-  async renderSinglePageCard(pageNum) {
+  async renderSinglePageCard(pageNum, visiblePagesCount = 1) {
     const page = await this.pdfDoc.getPage(pageNum);
 
     const baseViewport = page.getViewport({ scale: 1.0 });
-    const computedScale = this.calculateScale(baseViewport);
+    const computedScale = this.calculateScale(baseViewport, visiblePagesCount);
     this.lastComputedScale = computedScale;
 
     const viewport = page.getViewport({ scale: computedScale });
@@ -136,7 +137,7 @@ export class PDFViewer {
     return cardDiv;
   }
 
-  calculateScale(baseViewport) {
+  calculateScale(baseViewport, visiblePagesCount = 1) {
     if (this.scaleMode === 'custom') {
       return this.customScale;
     }
@@ -144,19 +145,22 @@ export class PDFViewer {
       return 1.0;
     }
 
-    const containerWidth = this.container.clientWidth - 40;
-    const containerHeight = this.container.clientHeight - 40;
+    // Measure exact container viewport dimensions
+    const paddingX = 24;
+    const paddingY = 24;
+    const gapX = (visiblePagesCount > 1) ? 12 : 0;
 
-    let targetWidth = baseViewport.width;
-    let targetHeight = baseViewport.height;
+    const containerWidth = Math.max(200, this.container.clientWidth - paddingX - gapX);
+    const containerHeight = Math.max(200, this.container.clientHeight - paddingY);
 
-    if (this.viewMode === 'spread') {
-      targetWidth *= 2;
-    }
+    const targetWidth = baseViewport.width * visiblePagesCount;
+    const targetHeight = baseViewport.height;
 
     if (this.scaleMode === 'fit-width') {
+      // Fit exactly to container width without clipping
       return containerWidth / targetWidth;
     } else {
+      // Fit Height (Entire Page visible without clipping)
       const scaleH = containerHeight / targetHeight;
       const scaleW = containerWidth / targetWidth;
       return Math.min(scaleH, scaleW);
@@ -183,7 +187,6 @@ export class PDFViewer {
     
     let baseFilter = '';
     if (this.themeMode === 'dark') {
-      // Eye-Soothing Soft Off-White Text on Deep Slate Background (Kindle / Reader Standard)
       baseFilter = `invert(0.88) hue-rotate(180deg) contrast(92%) brightness(95%)`;
     } else if (this.themeMode === 'sepia') {
       baseFilter = `sepia(0.35) contrast(95%) brightness(95%)`;
@@ -280,5 +283,39 @@ export class PDFViewer {
         this.prevPage();
       }
     }, { passive: false });
+  }
+
+  initTouchPinchEvents() {
+    let initialPinchDist = 0;
+    let startCustomScale = 1.0;
+
+    const getPinchDistance = (touches) => {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.hypot(dx, dy);
+    };
+
+    this.container.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        initialPinchDist = getPinchDistance(e.touches);
+        startCustomScale = (this.scaleMode === 'custom') ? this.customScale : this.lastComputedScale;
+      }
+    }, { passive: true });
+
+    this.container.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2 && initialPinchDist > 0) {
+        e.preventDefault();
+        const currentDist = getPinchDistance(e.touches);
+        const factor = currentDist / initialPinchDist;
+        const newScale = Math.min(Math.max(0.3, startCustomScale * factor), 3.0);
+        this.setScaleMode('custom', newScale);
+      }
+    }, { passive: false });
+
+    this.container.addEventListener('touchend', (e) => {
+      if (e.touches.length < 2) {
+        initialPinchDist = 0;
+      }
+    }, { passive: true });
   }
 }
