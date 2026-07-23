@@ -20,7 +20,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="./style.css?v=2.1.0">
+  <link rel="stylesheet" href="./style.css?v=2.2.0">
 
   <!-- PDF.js Engine CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -36,7 +36,7 @@
         <div class="logo-icon">
           <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
         </div>
-        <div class="logo-text">PDF Studio <span style="font-size: 0.65rem; color: #818cf8; font-weight: normal; margin-left: 4px;">v2.1.0</span></div>
+        <div class="logo-text">PDF Studio <span style="font-size: 0.65rem; color: #818cf8; font-weight: normal; margin-left: 4px;">v2.2.0</span></div>
         <span id="drive-status-badge" class="drive-badge" style="display: none; margin-left: 8px;">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg> Drive接続中
         </span>
@@ -172,7 +172,18 @@
           </select>
         </div>
 
-        <!-- Section 7: Cache Clear Controls -->
+        <!-- Section 7: Annotation Layer Show/Hide Filters -->
+        <div class="dock-section">
+          <div class="dock-section-title">注釈レイヤー表示/非表示</div>
+          <div class="layer-filter-bar" title="レイヤー個別の表示/非表示ON/OFF切替" style="justify-content: space-around; padding: 6px; gap: 4px;">
+            <button id="layer-stroke" class="layer-btn active" title="手書き・ハイライトの表示/非表示" style="font-size: 0.7rem; width: auto; padding: 2px 8px; border-radius: var(--radius-sm);">✏️ 手書き</button>
+            <button id="layer-shape" class="layer-btn active" title="直線・矢印・引出線の表示/非表示" style="font-size: 0.7rem; width: auto; padding: 2px 8px; border-radius: var(--radius-sm);">📐 図形</button>
+            <button id="layer-text" class="layer-btn active" title="テキスト入力の表示/非表示" style="font-size: 0.7rem; width: auto; padding: 2px 8px; border-radius: var(--radius-sm);">🔤 文字</button>
+            <button id="layer-pin" class="layer-btn active" title="ピン注釈の表示/非表示" style="font-size: 0.7rem; width: auto; padding: 2px 8px; border-radius: var(--radius-sm);">📍 ピン</button>
+          </div>
+        </div>
+
+        <!-- Section 8: Cache Management Controls -->
         <div class="dock-section" style="margin-top: 8px;">
           <div class="dock-section-title">キャッシュ管理</div>
           <div style="display: flex; flex-direction: column; gap: 6px;">
@@ -252,15 +263,7 @@
             💬 注釈・コメント一覧
           </div>
 
-          <!-- Ultra-Compact Layer Filter Pills -->
-          <div class="layer-filter-bar" title="レイヤー個別の表示/非表示ON/OFF切替">
-            <button id="layer-stroke" class="layer-btn active" title="手書き・ハイライトの表示/非表示">✏️</button>
-            <button id="layer-shape" class="layer-btn active" title="直線・矢印・引出線の表示/非表示">📐</button>
-            <button id="layer-text" class="layer-btn active" title="テキスト入力の表示/非表示">🔤</button>
-            <button id="layer-pin" class="layer-btn active" title="ピン注釈の表示/非表示">📍</button>
-          </div>
-
-          <button id="btn-collapse-right" class="tool-btn" title="注釈一覧パネルをたたむ" style="width: 24px; height: 24px; margin-left: 4px;">
+          <button id="btn-collapse-right" class="tool-btn" title="注釈一覧パネルをたたむ" style="width: 24px; height: 24px; margin-left: auto;">
             ▶
           </button>
         </div>
@@ -268,7 +271,7 @@
         <div id="comments-list" class="comments-list">
           <div class="empty-state">
             <div class="empty-icon">💬</div>
-            <p style="font-size: 0.8rem;">注釈コメントはまだありません。<br>右端の描画ツール「ピン」でPDF上の位置をタップして追加できます。</p>
+            <p style="font-size: 0.8rem;">注釈コメントはまだありません。<br>右端の「ピン」ツールでPDF上の位置をタップして追加できます。</p>
           </div>
         </div>
       </aside>
@@ -302,7 +305,7 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=2.1.0')
+        navigator.serviceWorker.register('./sw.js?v=2.2.0')
           .then(reg => {
             console.log('PWA ServiceWorker registered');
             reg.update(); // Force check for new sw.js
@@ -312,6 +315,6 @@
     }
   </script>
 
-  <script type="module" src="./js/app.js?v=2.1.0"></script>
+  <script type="module" src="./js/app.js?v=2.2.0"></script>
 </body>
 </html>

@@ -108,18 +108,21 @@ export class AnnotationManager {
 
   handlePointerDown(e, pageNum, canvas, card) {
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = rect.width > 0 ? canvas.width / rect.width : 1;
+    const scaleY = rect.height > 0 ? canvas.height / rect.height : 1;
+
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
 
     if (this.currentTool === 'comment') {
-      const xPercent = (x / rect.width) * 100;
-      const yPercent = (y / rect.height) * 100;
+      const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
+      const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
       this.addComment(pageNum, xPercent, yPercent, card);
       return;
     }
 
     if (this.currentTool === 'text') {
-      this.addTextAnnotation(pageNum, x, y, canvas);
+      this.addTextAnnotation(pageNum, x, y, canvas, scaleX);
       return;
     }
 
@@ -139,8 +142,11 @@ export class AnnotationManager {
     if (!this.isDrawing) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = rect.width > 0 ? canvas.width / rect.width : 1;
+    const scaleY = rect.height > 0 ? canvas.height / rect.height : 1;
+
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
     this.currentPt = { x, y };
 
     if (this.currentTool === 'eraser') {
@@ -153,7 +159,7 @@ export class AnnotationManager {
     }
 
     this.redrawPageCanvas(pageNum, canvas);
-    this.drawActiveShapePreview(canvas);
+    this.drawActiveShapePreview(canvas, scaleX);
   }
 
   handlePointerUp(e, pageNum, canvas) {
@@ -162,11 +168,14 @@ export class AnnotationManager {
 
     this.ensurePageObject(pageNum);
 
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = rect.width > 0 ? canvas.width / rect.width : 1;
+
     if (['pen', 'highlighter'].includes(this.currentTool) && this.currentPath.length > 1) {
       const strokeObj = {
         tool: this.currentTool,
         color: this.currentColor,
-        width: this.currentStrokeWidth * (this.currentTool === 'highlighter' ? 4 : 1),
+        width: this.currentStrokeWidth * scaleX * (this.currentTool === 'highlighter' ? 4 : 1),
         path: [...this.currentPath]
       };
       this.annotations[pageNum].strokes.push(strokeObj);
@@ -180,7 +189,7 @@ export class AnnotationManager {
           x2: this.currentPt.x,
           y2: this.currentPt.y,
           color: this.currentColor,
-          width: this.currentStrokeWidth
+          width: this.currentStrokeWidth * scaleX
         };
         this.annotations[pageNum].shapes.push(shapeObj);
         this.pushHistory('add_shape', pageNum, shapeObj);
