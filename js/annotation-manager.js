@@ -9,9 +9,10 @@ export class AnnotationManager {
     this.commentsContainer = commentsContainerElement;
     
     this.currentTool = 'select';
-    this.currentColor = '#6366f1';
+    this.currentColor = '#f43f5e';
     this.currentStrokeWidth = 3;
     this.currentFontSize = 14;
+    this.currentOpacity = 1.0;
 
     this.layerVisibility = {
       strokes: true,
@@ -44,6 +45,10 @@ export class AnnotationManager {
 
   setStrokeWidth(width) {
     this.currentStrokeWidth = width;
+  }
+
+  setOpacity(val) {
+    this.currentOpacity = Math.min(Math.max(0.1, val), 1.0);
   }
 
   toggleLayer(layerName) {
@@ -172,10 +177,12 @@ export class AnnotationManager {
     const scaleX = rect.width > 0 ? canvas.width / rect.width : 1;
 
     if (['pen', 'highlighter'].includes(this.currentTool) && this.currentPath.length > 1) {
+      const isHighlighter = this.currentTool === 'highlighter' || this.currentOpacity < 0.8;
       const strokeObj = {
         tool: this.currentTool,
         color: this.currentColor,
-        width: this.currentStrokeWidth * scaleX * (this.currentTool === 'highlighter' ? 4 : 1),
+        opacity: this.currentOpacity < 1.0 ? this.currentOpacity : (this.currentTool === 'highlighter' ? 0.35 : 1.0),
+        width: this.currentStrokeWidth * scaleX * (isHighlighter ? 3.5 : 1),
         path: [...this.currentPath]
       };
       this.annotations[pageNum].strokes.push(strokeObj);
@@ -189,6 +196,7 @@ export class AnnotationManager {
           x2: this.currentPt.x,
           y2: this.currentPt.y,
           color: this.currentColor,
+          opacity: this.currentOpacity,
           width: this.currentStrokeWidth * scaleX
         };
         this.annotations[pageNum].shapes.push(shapeObj);
@@ -330,22 +338,19 @@ export class AnnotationManager {
     if (this.layerVisibility.strokes) {
       (pageData.strokes || []).forEach(stroke => {
         if (stroke.path.length < 2) return;
+        ctx.save();
         ctx.beginPath();
         ctx.moveTo(stroke.path[0].x, stroke.path[0].y);
         for (let i = 1; i < stroke.path.length; i++) {
           ctx.lineTo(stroke.path[i].x, stroke.path[i].y);
         }
 
-        if (stroke.tool === 'highlighter') {
-          ctx.strokeStyle = this.hexToRgba(stroke.color, 0.4);
-          ctx.lineWidth = stroke.width;
-          ctx.lineCap = 'square';
-        } else {
-          ctx.strokeStyle = stroke.color;
-          ctx.lineWidth = stroke.width;
-          ctx.lineCap = 'round';
-        }
+        ctx.globalAlpha = stroke.opacity !== undefined ? stroke.opacity : (stroke.tool === 'highlighter' ? 0.35 : 1.0);
+        ctx.strokeStyle = stroke.color;
+        ctx.lineWidth = stroke.width;
+        ctx.lineCap = (stroke.tool === 'highlighter' || (stroke.opacity && stroke.opacity < 0.8)) ? 'square' : 'round';
         ctx.stroke();
+        ctx.restore();
       });
     }
 
