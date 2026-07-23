@@ -225,7 +225,40 @@ class App {
       this.viewer.setContrast(parseInt(e.target.value, 10));
     };
 
-    // 6. Sidebar Comment Jump & Individual Layer Filter Pills
+    // 6. Collapsible Split Docks & iPad Fullscreen Mode
+    const leftDock = document.getElementById('left-dock');
+    const rightSidebar = document.getElementById('right-sidebar');
+    const triggerLeft = document.getElementById('trigger-open-left');
+    const triggerRight = document.getElementById('trigger-open-right');
+    const btnCollapseLeft = document.getElementById('btn-collapse-left');
+    const btnCollapseRight = document.getElementById('btn-collapse-right');
+
+    const toggleLeftDock = (collapse) => {
+      if (collapse === undefined) collapse = !leftDock.classList.contains('collapsed');
+      leftDock.classList.toggle('collapsed', collapse);
+      triggerLeft.style.display = collapse ? 'flex' : 'none';
+      setTimeout(() => this.viewer.render(), 260);
+    };
+
+    const toggleRightSidebar = (collapse) => {
+      if (collapse === undefined) collapse = !rightSidebar.classList.contains('collapsed');
+      rightSidebar.classList.toggle('collapsed', collapse);
+      triggerRight.style.display = collapse ? 'flex' : 'none';
+      setTimeout(() => this.viewer.render(), 260);
+    };
+
+    if (btnCollapseLeft) btnCollapseLeft.onclick = () => toggleLeftDock(true);
+    if (triggerLeft) triggerLeft.onclick = () => toggleLeftDock(false);
+
+    if (btnCollapseRight) btnCollapseRight.onclick = () => toggleRightSidebar(true);
+    if (triggerRight) triggerRight.onclick = () => toggleRightSidebar(false);
+
+    // Auto-collapse docks on iPad / narrow screens for immersive reading
+    if (window.innerWidth <= 1024) {
+      toggleLeftDock(true);
+      toggleRightSidebar(true);
+    }
+
     this.annotator.onCommentJump = (pageNum, commentId) => {
       this.viewer.goToPage(pageNum);
       setTimeout(() => this.annotator.pulsePinMarker(commentId), 150);
