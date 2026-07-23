@@ -21,8 +21,10 @@ export class PDFViewer {
     this.customScale = 1.0;
     this.lastComputedScale = 1.0;
 
-    // Smooth Pinch State
+    // Smooth Pinch & GPU Panning State
     this.currentCssScale = 1.0;
+    this.translateX = 0;
+    this.translateY = 0;
 
     // Theme & Filter States
     this.themeMode = 'normal';     // 'normal', 'dark', 'sepia'
@@ -271,6 +273,9 @@ export class PDFViewer {
   }
 
   resetZoomToOneTouch() {
+    this.currentCssScale = 1.0;
+    this.translateX = 0;
+    this.translateY = 0;
     this.setScaleMode('fit-height');
   }
 
@@ -325,9 +330,41 @@ export class PDFViewer {
     }, { passive: false });
   }
 
+  clampTranslation() {
+    if (this.currentCssScale <= 1.02) {
+      this.translateX = 0;
+      this.translateY = 0;
+      return;
+    }
+
+    const spreadWidth = this.spreadView.offsetWidth || this.container.clientWidth;
+    const spreadHeight = this.spreadView.offsetHeight || this.container.clientHeight;
+
+    const scaledW = spreadWidth * this.currentCssScale;
+    const scaledH = spreadHeight * this.currentCssScale;
+
+    const maxTx = Math.max(0, (scaledW - this.container.clientWidth) / 2);
+    const maxTy = Math.max(0, (scaledH - this.container.clientHeight) / 2);
+
+    this.translateX = Math.min(Math.max(-maxTx, this.translateX), maxTx);
+    this.translateY = Math.min(Math.max(-maxTy, this.translateY), maxTy);
+  }
+
+  applyTransform() {
+    if (this.currentCssScale <= 1.02 && Math.abs(this.translateX) < 1 && Math.abs(this.translateY) < 1) {
+      this.spreadView.style.transform = 'none';
+    } else {
+      this.spreadView.style.transform = `translate3d(${this.translateX}px, ${this.translateY}px, 0px) scale(${this.currentCssScale})`;
+    }
+  }
+
   initTouchEvents() {
     let initialPinchDist = 0;
-    let pinchStartCssScale = 1.0;
+    let pinchStartScale = 1.0;
+    let panStartX = 0;
+    let panStartY = 0;
+    let initialTx = 0;
+    let initialTy = 0;
     let lastTapTime = 0;
 
     const getPinchDistance = (touches) => {
@@ -346,30 +383,54 @@ export class PDFViewer {
           return;
         }
         lastTapTime = now;
+
+        // Start 1-finger panning if zoomed in
+        if (this.currentCssScale > 1.05) {
+          panStartX = e.touches[0].clientX;
+          panStartY = e.touches[0].clientY;
+          initialTx = this.translateX;
+          initialTy = this.translateY;
+        }
       }
 
       if (e.touches.length === 2) {
         initialPinchDist = getPinchDistance(e.touches);
-        pinchStartCssScale = this.currentCssScale;
+        pinchStartScale = this.currentCssScale;
       }
     }, { passive: true });
 
     this.container.addEventListener('touchmove', (e) => {
+      // 2-finger Pinch Zoom
       if (e.touches.length === 2 && initialPinchDist > 0) {
         e.preventDefault();
         const currentDist = getPinchDistance(e.touches);
         const factor = currentDist / initialPinchDist;
         
-        this.currentCssScale = Math.min(Math.max(0.4, pinchStartCssScale * factor), 3.5);
-        this.spreadView.style.transform = `scale(${this.currentCssScale})`;
+        this.currentCssScale = Math.min(Math.max(0.9, pinchStartScale * factor), 3.5);
+        this.clampTranslation();
+        this.applyTransform();
+      }
+      // 1-finger Panning when zoomed in
+      else if (e.touches.length === 1 && this.currentCssScale > 1.05) {
+        const dx = e.touches[0].clientX - panStartX;
+        const dy = e.touches[0].clientY - panStartY;
+        
+        this.translateX = initialTx + dx;
+        this.translateY = initialTy + dy;
+        this.clampTranslation();
+        this.applyTransform();
       }
     }, { passive: false });
 
     this.container.addEventListener('touchend', (e) => {
-      if (e.touches.length < 2 && initialPinchDist > 0) {
-        const finalScale = (this.scaleMode === 'custom' ? this.customScale : this.lastComputedScale) * this.currentCssScale;
+      if (e.touches.length < 2) {
         initialPinchDist = 0;
-        this.setScaleMode('custom', Math.min(Math.max(0.3, finalScale), 3.0));
+        if (this.currentCssScale <= 1.05) {
+          this.currentCssScale = 1.0;
+          this.translateX = 0;
+          this.translateY = 0;
+          this.applyTransform();
+        }
       }
     }, { passive: true });
   }
