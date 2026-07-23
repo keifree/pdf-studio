@@ -109,6 +109,15 @@ class App {
     document.getElementById('btn-prev').onclick = () => this.viewer.prevPage();
     document.getElementById('btn-next').onclick = () => this.viewer.nextPage();
 
+    // Auto-resize handler for iPad rotation
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        this.viewer.render();
+      }, 200);
+    });
+
     this.viewer.onPageChange = (current, total) => {
       document.getElementById('current-page-num').value = current;
       document.getElementById('total-pages').textContent = total;
@@ -137,41 +146,9 @@ class App {
 
     // 5. Dynamic Zoom Sync & Reset Buttons
     const zoomSelect = document.getElementById('zoom-select');
-    this.viewer.onZoomChange = (mode, percent) => {
-      if (zoomSelect) {
-        if (mode === 'fit-height') {
-          zoomSelect.value = 'fit-height';
-        } else if (mode === 'fit-width') {
-          zoomSelect.value = 'fit-width';
-        } else {
-          const valStr = String(percent);
-          let matchOpt = Array.from(zoomSelect.options).find(opt => opt.value === valStr);
-          if (!matchOpt) {
-            const prevCustom = zoomSelect.querySelector('option.custom-opt');
-            if (prevCustom) prevCustom.remove();
 
-            matchOpt = document.createElement('option');
-            matchOpt.className = 'custom-opt';
-            matchOpt.value = valStr;
-            matchOpt.textContent = `${percent}% (カスタム)`;
-            zoomSelect.appendChild(matchOpt);
-          }
-          zoomSelect.value = valStr;
-        }
-      }
-    };
 
-    zoomSelect.onchange = (e) => {
-      const val = e.target.value;
-      if (val === 'fit-height' || val === 'fit-width') {
-        this.viewer.setScaleMode(val);
-      } else {
-        const percent = parseInt(val, 10);
-        if (!isNaN(percent)) {
-          this.viewer.setScaleMode('custom', percent / 100);
-        }
-      }
-    };
+
 
     // Touch Swipe / Flick Gesture Handler
     let touchStartX = 0;
@@ -394,13 +371,23 @@ class App {
 
     this.viewer.onZoomChange = (mode, percent) => {
       const zoomSelect = document.getElementById('zoom-select');
+      if (!zoomSelect) return;
       if (['fit-height', 'fit-width', '100'].includes(mode)) {
         zoomSelect.value = mode;
       } else {
-        const optionExists = Array.from(zoomSelect.options).some(opt => opt.value === percent.toString());
-        if (optionExists) {
-          zoomSelect.value = percent.toString();
+        const valStr = String(percent);
+        let matchOpt = Array.from(zoomSelect.options).find(opt => opt.value === valStr);
+        if (!matchOpt) {
+          const prevCustom = zoomSelect.querySelector('option.custom-opt');
+          if (prevCustom) prevCustom.remove();
+
+          matchOpt = document.createElement('option');
+          matchOpt.className = 'custom-opt';
+          matchOpt.value = valStr;
+          matchOpt.textContent = `${percent}% (カスタム)`;
+          zoomSelect.appendChild(matchOpt);
         }
+        zoomSelect.value = valStr;
       }
     };
 

@@ -437,9 +437,6 @@ body {
   flex: 1;
   overflow: auto;
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   background: #000000;
   user-select: none;
 }
@@ -531,6 +528,9 @@ body {
   transform-origin: center center;
   will-change: transform;
   margin: auto;
+  min-height: 100%;
+  min-width: 100%;
+  padding: 12px;
 }
 
 .pdf-page-card {

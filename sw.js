@@ -3,7 +3,7 @@
  * Caches core app assets for offline launch & satisfies PWA installation criteria.
  */
 
-const CACHE_NAME = 'pdf-studio-v8';
+const CACHE_NAME = 'pdf-studio-v9';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

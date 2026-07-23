@@ -155,13 +155,13 @@ export class PDFViewer {
       return 1.0;
     }
 
-    // Absolute precise bounds calculation with 96% safety margin for zero-clipping
-    const containerW = Math.max(200, this.container.clientWidth);
-    const containerH = Math.max(200, this.container.clientHeight);
+    // Absolute precise bounds calculation with safety margin
+    const containerW = Math.max(100, this.container.clientWidth);
+    const containerH = Math.max(100, this.container.clientHeight);
 
-    // Margins (safety buffer 12px)
-    const availW = Math.max(100, containerW - 12);
-    const availH = Math.max(100, containerH - 12);
+    // Margins (account for 12px padding on spread view + extra safety buffer)
+    const availW = containerW - 32;
+    const availH = containerH - 32;
 
     // Calculate total required width and height for current spread
     const targetW = (baseViewport.width * visiblePagesCount) + ((visiblePagesCount > 1) ? 8 : 0);
@@ -171,11 +171,9 @@ export class PDFViewer {
     const scaleH = availH / targetH;
 
     if (this.scaleMode === 'fit-width') {
-      // Fit width exactly to container width
-      return scaleW * 0.98;
+      return scaleW;
     } else {
-      // Fit Height / Entire Page (Guaranteed 100% visible on screen without any clipping in both Portrait & Landscape)
-      return Math.min(scaleW, scaleH) * 0.98;
+      return Math.min(scaleW, scaleH);
     }
   }
 
