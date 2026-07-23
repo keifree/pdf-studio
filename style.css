@@ -438,6 +438,46 @@ body {
 
 #trigger-open-right {
   right: 12px;
+  top: 12px;
+}
+
+/* Permanent Right-Edge Floating Drawing Tool Palette */
+.floating-draw-toolbar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 520;
+  background: rgba(10, 13, 20, 0.88);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 6px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  user-select: none;
+}
+
+.floating-draw-toolbar .annot-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  border: none;
+}
+
+.floating-draw-toolbar .annot-btn {
+  width: 34px;
+  height: 34px;
+}
+
+.floating-draw-toolbar .color-picker-wrapper {
+  padding: 4px 2px 0 2px;
+  border-top: 1px solid var(--border-color);
+  gap: 4px;
 }
 
 /* Maximized Central Viewport Container */

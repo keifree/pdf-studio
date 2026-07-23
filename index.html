@@ -20,7 +20,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="./style.css?v=2.0.0">
+  <link rel="stylesheet" href="./style.css?v=2.1.0">
 
   <!-- PDF.js Engine CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -36,7 +36,7 @@
         <div class="logo-icon">
           <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
         </div>
-        <div class="logo-text">PDF Studio <span style="font-size: 0.65rem; color: #818cf8; font-weight: normal; margin-left: 4px;">v2.0.0</span></div>
+        <div class="logo-text">PDF Studio <span style="font-size: 0.65rem; color: #818cf8; font-weight: normal; margin-left: 4px;">v2.1.0</span></div>
         <span id="drive-status-badge" class="drive-badge" style="display: none; margin-left: 8px;">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg> Drive接続中
         </span>
@@ -82,8 +82,8 @@
         ⚙️ 設定 ◀
       </button>
 
-      <button id="trigger-open-right" class="dock-floating-trigger" style="display: none;" title="描画・注釈ツールを開く">
-        ▶ 描画注釈
+      <button id="trigger-open-right" class="dock-floating-trigger" style="display: flex;" title="注釈コメント一覧を開く">
+        💬 注釈一覧
       </button>
 
       <!-- Left Dock: Reading & Layout Controls -->
@@ -187,7 +187,52 @@
       </aside>
 
       <!-- Central Maximized PDF Viewer Container -->
+      <!-- Central Maximized PDF Viewer Container -->
       <div id="viewer-container">
+        <!-- Floating Permanent Right-Edge Drawing Tool Palette -->
+        <div id="floating-draw-toolbar" class="floating-draw-toolbar">
+          <div class="annot-tools-grid">
+            <button class="annot-btn active" data-tool="select" title="選択・移動モード (Esc)">
+              <svg viewBox="0 0 24 24"><path d="M7 2l12 11.2-5.8.5 3.3 7.3-2.2 1-3.2-7.4L7 18.5V2z"/></svg>
+            </button>
+            <button class="annot-btn" data-tool="pen" title="手書きペン">
+              <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+            </button>
+            <button class="annot-btn" data-tool="highlighter" title="蛍光ペン">
+              <svg viewBox="0 0 24 24"><path d="M18.5 2.5L16 0l-8.5 8.5 2.5 2.5L18.5 2.5zM2 22h4l9-9-4-4-9 9v4z"/></svg>
+            </button>
+
+            <button class="annot-btn" data-tool="line" title="直線描画 (ドラッグで描画)">
+              <svg viewBox="0 0 24 24"><path d="M4 20L20 4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+            </button>
+            <button class="annot-btn" data-tool="arrow" title="矢印描画 (ドラッグで描画)">
+              <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+            </button>
+            <button class="annot-btn" data-tool="text" title="テキスト入力 (タップして入力)">
+              <span>T</span>
+            </button>
+
+            <button class="annot-btn" data-tool="callout" title="引出線付きテキスト (ドラッグで描画)">
+              <span>💬引</span>
+            </button>
+            <button class="annot-btn" data-tool="comment" title="ピン注釈追加">
+              <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg>
+            </button>
+            <button class="annot-btn" data-tool="eraser" title="消しゴム">
+              <svg viewBox="0 0 24 24"><path d="M15.14 3c-.51 0-1.02.2-1.41.59L2.59 14.73c-.78.77-.78 2.04 0 2.83L5.03 20h7.66l8.72-8.73c.78-.78.78-2.05 0-2.83l-4.86-4.85c-.39-.39-.9-.59-1.41-.59z"/></svg>
+            </button>
+          </div>
+
+          <div class="color-picker-wrapper">
+            <div class="color-dot" data-color="#6366f1" style="background: #6366f1; border-color: white;"></div>
+            <div class="color-dot" data-color="#f43f5e" style="background: #f43f5e;"></div>
+            <div class="color-dot" data-color="#10b981" style="background: #10b981;"></div>
+            <div class="color-dot" data-color="#f59e0b" style="background: #f59e0b;"></div>
+            <input type="color" id="custom-color-picker" value="#6366f1" title="カスタムカラー" style="width:18px; height:18px; border:none; background:transparent; cursor:pointer;">
+            <input type="range" id="stroke-width-slider" min="1" max="20" value="3" title="線の太さ" style="width: 45px; margin-left: auto;">
+          </div>
+        </div>
+
         <!-- Floating Bottom Fast-Scrum Page Slider & One-Touch Reset -->
         <div id="floating-page-bar" class="floating-page-bar">
           <button id="btn-quick-reset-zoom" class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.72rem; border-radius: var(--radius-full);" title="全体表示（元のサイズ）に一発でリセット">
@@ -200,12 +245,11 @@
         <div id="pdf-spread-view"></div>
       </div>
 
-      <!-- Right Dock: Annotation Tools & Comments Panel -->
-      <aside id="right-sidebar" class="right-sidebar">
+      <!-- Right Dock: Comments & Notes Drawer (Collapsible) -->
+      <aside id="right-sidebar" class="right-sidebar collapsed">
         <div class="sidebar-header">
           <div class="sidebar-title">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-            描画注釈
+            💬 注釈・コメント一覧
           </div>
 
           <!-- Ultra-Compact Layer Filter Pills -->
@@ -216,57 +260,15 @@
             <button id="layer-pin" class="layer-btn active" title="ピン注釈の表示/非表示">📍</button>
           </div>
 
-          <button id="btn-collapse-right" class="tool-btn" title="注釈パネルをたたんでPDFを全画面化" style="width: 24px; height: 24px; margin-left: 4px;">
+          <button id="btn-collapse-right" class="tool-btn" title="注釈一覧パネルをたたむ" style="width: 24px; height: 24px; margin-left: 4px;">
             ▶
           </button>
-        </div>
-
-        <!-- Sleek Uniform 3x3 Annotation Grid -->
-        <div class="annot-tools-grid">
-          <button class="annot-btn active" data-tool="select" title="選択・移動モード">
-            <svg viewBox="0 0 24 24"><path d="M7 2l12 11.2-5.8.5 3.3 7.3-2.2 1-3.2-7.4L7 18.5V2z"/></svg>
-          </button>
-          <button class="annot-btn" data-tool="pen" title="手書きペン">
-            <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-          </button>
-          <button class="annot-btn" data-tool="highlighter" title="蛍光ペン">
-            <svg viewBox="0 0 24 24"><path d="M18.5 2.5L16 0l-8.5 8.5 2.5 2.5L18.5 2.5zM2 22h4l9-9-4-4-9 9v4z"/></svg>
-          </button>
-
-          <button class="annot-btn" data-tool="line" title="直線描画 (ドラッグで描画)">
-            <svg viewBox="0 0 24 24"><path d="M4 20L20 4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
-          </button>
-          <button class="annot-btn" data-tool="arrow" title="矢印描画 (ドラッグで描画)">
-            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-          </button>
-          <button class="annot-btn" data-tool="text" title="テキスト入力 (位置をタップして文字入力)">
-            <span>T</span>
-          </button>
-
-          <button class="annot-btn" data-tool="callout" title="引出線付きテキスト (対象をタップしてドラッグ)">
-            <span>💬引</span>
-          </button>
-          <button class="annot-btn" data-tool="comment" title="ピンコメント追加">
-            <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg>
-          </button>
-          <button class="annot-btn" data-tool="eraser" title="消しゴム (オブジェクト消去)">
-            <svg viewBox="0 0 24 24"><path d="M15.14 3c-.51 0-1.02.2-1.41.59L2.59 14.73c-.78.77-.78 2.04 0 2.83L5.03 20h7.66l8.72-8.73c.78-.78.78-2.05 0-2.83l-4.86-4.85c-.39-.39-.9-.59-1.41-.59z"/></svg>
-          </button>
-        </div>
-
-        <div class="color-picker-wrapper">
-          <div class="color-dot" data-color="#6366f1" style="background: #6366f1; border-color: white;"></div>
-          <div class="color-dot" data-color="#f43f5e" style="background: #f43f5e;"></div>
-          <div class="color-dot" data-color="#10b981" style="background: #10b981;"></div>
-          <div class="color-dot" data-color="#f59e0b" style="background: #f59e0b;"></div>
-          <input type="color" id="custom-color-picker" value="#6366f1" title="カスタムカラー" style="width:20px; height:20px; border:none; background:transparent; cursor:pointer;">
-          <input type="range" id="stroke-width-slider" min="1" max="20" value="3" title="線の太さ" style="width: 50px; margin-left: auto;">
         </div>
 
         <div id="comments-list" class="comments-list">
           <div class="empty-state">
             <div class="empty-icon">💬</div>
-            <p style="font-size: 0.8rem;">注釈コメントはまだありません。<br>「ピン」ツールでPDF上の任意の場所をタップして追加できます。</p>
+            <p style="font-size: 0.8rem;">注釈コメントはまだありません。<br>右端の描画ツール「ピン」でPDF上の位置をタップして追加できます。</p>
           </div>
         </div>
       </aside>
@@ -300,7 +302,7 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=2.0.0')
+        navigator.serviceWorker.register('./sw.js?v=2.1.0')
           .then(reg => {
             console.log('PWA ServiceWorker registered');
             reg.update(); // Force check for new sw.js
@@ -310,6 +312,6 @@
     }
   </script>
 
-  <script type="module" src="./js/app.js?v=2.0.0"></script>
+  <script type="module" src="./js/app.js?v=2.1.0"></script>
 </body>
 </html>
