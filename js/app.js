@@ -135,30 +135,55 @@ class App {
       if (!isNaN(pageNum)) this.viewer.goToPage(pageNum);
     };
 
-    // Floating Page Slider Drag Action & Quick Zoom Reset
-    const floatingSlider = document.getElementById('floating-page-slider');
-    if (floatingSlider) {
-      floatingSlider.oninput = (e) => {
-        const targetPage = parseInt(e.target.value, 10);
-        if (!isNaN(targetPage)) {
-          this.viewer.goToPage(targetPage);
+    // 5. Dynamic Zoom Sync & Reset Buttons
+    const zoomSelect = document.getElementById('zoom-select');
+    this.viewer.onZoomChange = (mode, percent) => {
+      if (zoomSelect) {
+        if (mode === 'fit-height') {
+          zoomSelect.value = 'fit-height';
+        } else if (mode === 'fit-width') {
+          zoomSelect.value = 'fit-width';
+        } else {
+          // Sync exact numeric scale (50%, 75%, 100%, 150%, 200% or Custom)
+          const valStr = String(percent);
+          let matchOpt = Array.from(zoomSelect.options).find(opt => opt.value === valStr);
+          if (!matchOpt) {
+            // Remove previous custom option if exists
+            const prevCustom = zoomSelect.querySelector('option.custom-opt');
+            if (prevCustom) prevCustom.remove();
+
+            matchOpt = document.createElement('option');
+            matchOpt.className = 'custom-opt';
+            matchOpt.value = valStr;
+            matchOpt.textContent = `${percent}% (カスタム)`;
+            zoomSelect.appendChild(matchOpt);
+          }
+          zoomSelect.value = valStr;
         }
-      };
-    }
+      }
+    };
 
-    const btnQuickReset = document.getElementById('btn-quick-reset-zoom');
-    if (btnQuickReset) {
-      btnQuickReset.onclick = () => {
-        this.viewer.resetZoomToOneTouch();
-        this.showToast('全体表示にリセットしました 🔍', 'info');
-      };
-    }
+    zoomSelect.onchange = (e) => {
+      const val = e.target.value;
+      if (val === 'fit-height' || val === 'fit-width') {
+        this.viewer.setScaleMode(val);
+      } else {
+        const percent = parseInt(val, 10);
+        if (!isNaN(percent)) {
+          this.viewer.setScaleMode('custom', percent / 100);
+        }
+      }
+    };
 
-    // iPad Touch Tap Zones (Screen Edge Page Turners - Guaranteed High-Priority Triggers)
+    // iPad Touch Tap Zones (Screen Edge Page Turners - Highest Priority Touch Listeners)
     const tapLeft = document.getElementById('tap-zone-left');
     const tapRight = document.getElementById('tap-zone-right');
 
-    const handleTapTurn = (isLeft) => {
+    const handleTapTurn = (isLeft, e) => {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
       if (this.annotator.currentTool !== 'select') return;
       if (isLeft) {
         if (this.viewer.bindingMode === 'rtl') this.viewer.nextPage();
@@ -170,13 +195,13 @@ class App {
     };
 
     if (tapLeft) {
-      tapLeft.onclick = (e) => { e.stopPropagation(); handleTapTurn(true); };
-      tapLeft.ontouchend = (e) => { e.stopPropagation(); handleTapTurn(true); };
+      tapLeft.addEventListener('click', (e) => handleTapTurn(true, e), true);
+      tapLeft.addEventListener('touchend', (e) => handleTapTurn(true, e), true);
     }
 
     if (tapRight) {
-      tapRight.onclick = (e) => { e.stopPropagation(); handleTapTurn(false); };
-      tapRight.ontouchend = (e) => { e.stopPropagation(); handleTapTurn(false); };
+      tapRight.addEventListener('click', (e) => handleTapTurn(false, e), true);
+      tapRight.addEventListener('touchend', (e) => handleTapTurn(false, e), true);
     }
 
     // Touch Swipe / Flick Gesture Handler

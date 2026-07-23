@@ -1,6 +1,6 @@
 /* ==========================================================================
    Antigravity PDF Studio - Design System & Modern UI Stylesheet
-   iPad Touch Optimization: 60fps GPU Pinch Zoom, Double-Tap Reset, Tap Zones
+   Complete Viewport & Touch Tap Fixes for iPad (Portrait & Landscape)
    ========================================================================== */
 
 :root {
@@ -435,25 +435,23 @@ body {
 /* Maximized Central Viewport Container */
 #viewer-container {
   flex: 1;
-  overflow: hidden;
+  overflow: auto;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
   background: #000000;
   user-select: none;
-  touch-action: none;
 }
 
-/* High-Priority iPad Touch Tap Zones (Z-Index 80 for Guaranteed Touches) */
+/* Guaranteed High-Priority iPad Touch Tap Zones (Z-Index 500) */
 .tap-zone {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 22%;
-  max-width: 180px;
-  z-index: 80;
+  width: 25%;
+  max-width: 200px;
+  z-index: 500;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -466,12 +464,12 @@ body {
 
 .tap-zone-left {
   left: 0;
-  background: linear-gradient(to right, rgba(99, 102, 241, 0.2), transparent);
+  background: linear-gradient(to right, rgba(99, 102, 241, 0.25), transparent);
 }
 
 .tap-zone-right {
   right: 0;
-  background: linear-gradient(to left, rgba(99, 102, 241, 0.2), transparent);
+  background: linear-gradient(to left, rgba(99, 102, 241, 0.25), transparent);
 }
 
 .tap-zone:active {
@@ -479,17 +477,17 @@ body {
 }
 
 .tap-zone-ripple {
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  background: rgba(99, 102, 241, 0.45);
-  border: 1.5px solid rgba(255, 255, 255, 0.8);
+  background: rgba(99, 102, 241, 0.55);
+  border: 2px solid rgba(255, 255, 255, 0.9);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   color: white;
-  box-shadow: 0 0 20px var(--accent-glow);
+  box-shadow: 0 0 24px var(--accent-glow);
 }
 
 /* Floating Bottom Fast-Scrum Page Slider */
@@ -498,7 +496,7 @@ body {
   bottom: 16px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 85;
+  z-index: 550;
   background: rgba(15, 23, 42, 0.88);
   backdrop-filter: blur(16px);
   border: 1px solid var(--border-color);
@@ -509,7 +507,7 @@ body {
   align-items: center;
   gap: 10px;
   max-width: 90vw;
-  width: 340px;
+  width: 350px;
   transition: all 0.25s ease;
 }
 
@@ -532,6 +530,7 @@ body {
   gap: 8px;
   transform-origin: center center;
   will-change: transform;
+  margin: auto;
 }
 
 .pdf-page-card {
