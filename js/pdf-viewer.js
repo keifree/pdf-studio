@@ -1,8 +1,6 @@
 /**
  * Antigravity PDF Studio - Core PDF.js Rendering Engine
- * Supports 2-Page Spread Layout, RTL Right-Binding, Cover Offset Toggle,
- * iPad Touch Pinch-to-Zoom (2-finger scale), Edge-to-Edge Responsive Fit,
- * Eye-Soothing Soft Off-White Dark Mode, Brightness & Contrast Sliders.
+ * 60fps GPU Pinch Zoom, Double-Tap One-Touch Reset, Guaranteed 100% Fit-to-Screen
  */
 
 export class PDFViewer {
@@ -22,6 +20,9 @@ export class PDFViewer {
     this.customScale = 1.0;
     this.lastComputedScale = 1.0;
 
+    // Smooth Pinch State
+    this.currentCssScale = 1.0;
+
     // Theme & Filter States
     this.themeMode = 'normal';     // 'normal', 'dark', 'sepia'
     this.brightness = 100;         // 50% ~ 150%
@@ -32,7 +33,7 @@ export class PDFViewer {
     this.onZoomChange = null;
 
     this.initMouseWheelEvents();
-    this.initTouchPinchEvents();
+    this.initTouchEvents();
   }
 
   async loadDocument(dataBuffer, initialPage = 1) {
@@ -52,6 +53,10 @@ export class PDFViewer {
 
   async render() {
     if (!this.pdfDoc) return;
+
+    // Reset CSS scale transform
+    this.currentCssScale = 1.0;
+    this.spreadView.style.transform = 'scale(1)';
 
     this.spreadView.innerHTML = '';
     const pagesToRender = this.calculatePagesForCurrentView();
@@ -145,25 +150,30 @@ export class PDFViewer {
       return 1.0;
     }
 
-    // Measure exact container viewport dimensions
-    const paddingX = 24;
-    const paddingY = 24;
-    const gapX = (visiblePagesCount > 1) ? 12 : 0;
+    // Absolute zero-clipping bounds calculation
+    const containerWidth = Math.max(200, this.container.clientWidth);
+    const containerHeight = Math.max(200, this.container.clientHeight);
 
-    const containerWidth = Math.max(200, this.container.clientWidth - paddingX - gapX);
-    const containerHeight = Math.max(200, this.container.clientHeight - paddingY);
+    // Padding & gap margins
+    const padX = 16;
+    const padY = 16;
+    const gapX = (visiblePagesCount > 1) ? 8 : 0;
+
+    const availWidth = Math.max(100, containerWidth - padX - gapX);
+    const availHeight = Math.max(100, containerHeight - padY);
 
     const targetWidth = baseViewport.width * visiblePagesCount;
     const targetHeight = baseViewport.height;
 
+    const scaleW = availWidth / targetWidth;
+    const scaleH = availHeight / targetHeight;
+
     if (this.scaleMode === 'fit-width') {
-      // Fit exactly to container width without clipping
-      return containerWidth / targetWidth;
+      // Fit to width without overflow
+      return scaleW;
     } else {
-      // Fit Height (Entire Page visible without clipping)
-      const scaleH = containerHeight / targetHeight;
-      const scaleW = containerWidth / targetWidth;
-      return Math.min(scaleH, scaleW);
+      // Fit Height / Entire Page (Guaranteed 100% visible on screen without any clipping)
+      return Math.min(scaleW, scaleH);
     }
   }
 
@@ -234,6 +244,10 @@ export class PDFViewer {
     }
   }
 
+  resetZoomToOneTouch() {
+    this.setScaleMode('fit-height');
+  }
+
   goToPage(pageNum) {
     if (!this.pdfDoc) return;
     const target = Math.min(Math.max(1, pageNum), this.totalPages);
@@ -285,9 +299,11 @@ export class PDFViewer {
     }, { passive: false });
   }
 
-  initTouchPinchEvents() {
+  initTouchEvents() {
     let initialPinchDist = 0;
-    let startCustomScale = 1.0;
+    let pinchStartCssScale = 1.0;
+
+    let lastTapTime = 0;
 
     const getPinchDistance = (touches) => {
       const dx = touches[0].clientX - touches[1].clientX;
@@ -295,10 +311,23 @@ export class PDFViewer {
       return Math.hypot(dx, dy);
     };
 
+    // 60fps GPU Pinch Zoom Acceleration via CSS Transform
     this.container.addEventListener('touchstart', (e) => {
+      // Check Double Tap to One-Touch Reset
+      if (e.touches.length === 1) {
+        const now = Date.now();
+        if (now - lastTapTime < 300) {
+          // Double Tap Detected -> Reset to Fit Height!
+          this.resetZoomToOneTouch();
+          lastTapTime = 0;
+          return;
+        }
+        lastTapTime = now;
+      }
+
       if (e.touches.length === 2) {
         initialPinchDist = getPinchDistance(e.touches);
-        startCustomScale = (this.scaleMode === 'custom') ? this.customScale : this.lastComputedScale;
+        pinchStartCssScale = this.currentCssScale;
       }
     }, { passive: true });
 
@@ -307,14 +336,18 @@ export class PDFViewer {
         e.preventDefault();
         const currentDist = getPinchDistance(e.touches);
         const factor = currentDist / initialPinchDist;
-        const newScale = Math.min(Math.max(0.3, startCustomScale * factor), 3.0);
-        this.setScaleMode('custom', newScale);
+        
+        this.currentCssScale = Math.min(Math.max(0.4, pinchStartCssScale * factor), 3.5);
+        this.spreadView.style.transform = `scale(${this.currentCssScale})`;
       }
     }, { passive: false });
 
     this.container.addEventListener('touchend', (e) => {
-      if (e.touches.length < 2) {
+      if (e.touches.length < 2 && initialPinchDist > 0) {
+        // Pinch ended -> Re-render at sharp crisp scale
+        const finalScale = (this.scaleMode === 'custom' ? this.customScale : this.lastComputedScale) * this.currentCssScale;
         initialPinchDist = 0;
+        this.setScaleMode('custom', Math.min(Math.max(0.3, finalScale), 3.0));
       }
     }, { passive: true });
   }

@@ -135,7 +135,7 @@ class App {
       if (!isNaN(pageNum)) this.viewer.goToPage(pageNum);
     };
 
-    // Floating Page Slider Drag Action
+    // Floating Page Slider Drag Action & Quick Zoom Reset
     const floatingSlider = document.getElementById('floating-page-slider');
     if (floatingSlider) {
       floatingSlider.oninput = (e) => {
@@ -146,26 +146,37 @@ class App {
       };
     }
 
-    // iPad Touch Tap Zones (Screen Edge Page Turners)
-    const tapLeft = document.getElementById('tap-zone-left');
-    const tapRight = document.getElementById('tap-zone-right');
-
-    if (tapLeft) {
-      tapLeft.onclick = (e) => {
-        e.stopPropagation();
-        if (this.annotator.currentTool !== 'select') return; // Don't trigger when drawing
-        if (this.viewer.bindingMode === 'rtl') this.viewer.nextPage();
-        else this.viewer.prevPage();
+    const btnQuickReset = document.getElementById('btn-quick-reset-zoom');
+    if (btnQuickReset) {
+      btnQuickReset.onclick = () => {
+        this.viewer.resetZoomToOneTouch();
+        this.showToast('全体表示にリセットしました 🔍', 'info');
       };
     }
 
-    if (tapRight) {
-      tapRight.onclick = (e) => {
-        e.stopPropagation();
-        if (this.annotator.currentTool !== 'select') return; // Don't trigger when drawing
+    // iPad Touch Tap Zones (Screen Edge Page Turners - Guaranteed High-Priority Triggers)
+    const tapLeft = document.getElementById('tap-zone-left');
+    const tapRight = document.getElementById('tap-zone-right');
+
+    const handleTapTurn = (isLeft) => {
+      if (this.annotator.currentTool !== 'select') return;
+      if (isLeft) {
+        if (this.viewer.bindingMode === 'rtl') this.viewer.nextPage();
+        else this.viewer.prevPage();
+      } else {
         if (this.viewer.bindingMode === 'rtl') this.viewer.prevPage();
         else this.viewer.nextPage();
-      };
+      }
+    };
+
+    if (tapLeft) {
+      tapLeft.onclick = (e) => { e.stopPropagation(); handleTapTurn(true); };
+      tapLeft.ontouchend = (e) => { e.stopPropagation(); handleTapTurn(true); };
+    }
+
+    if (tapRight) {
+      tapRight.onclick = (e) => { e.stopPropagation(); handleTapTurn(false); };
+      tapRight.ontouchend = (e) => { e.stopPropagation(); handleTapTurn(false); };
     }
 
     // Touch Swipe / Flick Gesture Handler

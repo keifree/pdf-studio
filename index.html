@@ -197,9 +197,12 @@
           <div class="tap-zone-ripple">▶</div>
         </div>
 
-        <!-- Floating Bottom Fast-Scrum Page Slider -->
+        <!-- Floating Bottom Fast-Scrum Page Slider & One-Touch Reset -->
         <div id="floating-page-bar" class="floating-page-bar">
-          <span id="floating-page-label" style="font-size: 0.78rem; font-weight: 600; min-width: 70px; color: var(--text-primary);">P. 1 / 1</span>
+          <button id="btn-quick-reset-zoom" class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.72rem; border-radius: var(--radius-full);" title="全体表示（元のサイズ）に一発でリセット">
+            🔍 リセット
+          </button>
+          <span id="floating-page-label" style="font-size: 0.78rem; font-weight: 600; min-width: 65px; color: var(--text-primary);">P. 1 / 1</span>
           <input type="range" id="floating-page-slider" class="floating-page-slider" min="1" max="1" value="1" title="ページ早送りドラッグ">
         </div>
 
