@@ -1,6 +1,6 @@
 /* ==========================================================================
    Antigravity PDF Studio - Design System & Modern UI Stylesheet
-   Maximized Viewport, Collapsible Split Docks & iPad Fullscreen Mode
+   iPad Touch Optimization: Tap Zones, Swipe Gestures & Floating Page Slider
    ========================================================================== */
 
 :root {
@@ -396,7 +396,7 @@ body {
   fill: currentColor;
 }
 
-/* Floating Dock Toggle Triggers (When Docks are Collapsed) */
+/* Floating Dock Toggle Triggers */
 .dock-floating-trigger {
   position: absolute;
   top: 10px;
@@ -432,7 +432,7 @@ body {
   right: 12px;
 }
 
-/* Maximized Central Viewport Container - OLED Pitch Black */
+/* Maximized Central Viewport Container */
 #viewer-container {
   flex: 1;
   overflow: auto;
@@ -444,6 +444,85 @@ body {
   background: #000000;
   user-select: none;
   transition: all 0.25s ease;
+  touch-action: pan-y;
+}
+
+/* iPad Touch Tap Zones (Screen Edge Page Turners) */
+.tap-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 18%;
+  max-width: 160px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.tap-zone-left {
+  left: 0;
+  background: linear-gradient(to right, rgba(99, 102, 241, 0.12), transparent);
+}
+
+.tap-zone-right {
+  right: 0;
+  background: linear-gradient(to left, rgba(99, 102, 241, 0.12), transparent);
+}
+
+.tap-zone:active {
+  opacity: 1.0;
+}
+
+.tap-zone-ripple {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  color: white;
+  box-shadow: 0 0 16px var(--accent-glow);
+}
+
+/* Floating Bottom Fast-Scrum Page Slider */
+.floating-page-bar {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 95;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+  padding: 6px 16px;
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 90vw;
+  width: 360px;
+  transition: all 0.25s ease;
+}
+
+.floating-page-bar:hover {
+  background: rgba(15, 23, 42, 0.95);
+  border-color: var(--accent-light);
+  box-shadow: var(--shadow-glow);
+}
+
+.floating-page-slider {
+  flex: 1;
+  accent-color: var(--accent-primary);
+  cursor: pointer;
 }
 
 #pdf-spread-view {
@@ -570,7 +649,6 @@ body {
   gap: 6px;
 }
 
-/* Compact Layer Filter Pills inside Sidebar Header */
 .layer-filter-bar {
   display: flex;
   align-items: center;

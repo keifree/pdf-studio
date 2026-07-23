@@ -112,6 +112,16 @@ class App {
     this.viewer.onPageChange = (current, total) => {
       document.getElementById('current-page-num').value = current;
       document.getElementById('total-pages').textContent = total;
+      
+      // Sync Floating Page Slider
+      const floatingLabel = document.getElementById('floating-page-label');
+      const floatingSlider = document.getElementById('floating-page-slider');
+      if (floatingLabel) floatingLabel.textContent = `P. ${current} / ${total}`;
+      if (floatingSlider) {
+        floatingSlider.max = total;
+        floatingSlider.value = current;
+      }
+
       const activeTab = this.getActiveTab();
       if (activeTab) {
         activeTab.currentPage = current;
@@ -124,6 +134,71 @@ class App {
       const pageNum = parseInt(e.target.value, 10);
       if (!isNaN(pageNum)) this.viewer.goToPage(pageNum);
     };
+
+    // Floating Page Slider Drag Action
+    const floatingSlider = document.getElementById('floating-page-slider');
+    if (floatingSlider) {
+      floatingSlider.oninput = (e) => {
+        const targetPage = parseInt(e.target.value, 10);
+        if (!isNaN(targetPage)) {
+          this.viewer.goToPage(targetPage);
+        }
+      };
+    }
+
+    // iPad Touch Tap Zones (Screen Edge Page Turners)
+    const tapLeft = document.getElementById('tap-zone-left');
+    const tapRight = document.getElementById('tap-zone-right');
+
+    if (tapLeft) {
+      tapLeft.onclick = (e) => {
+        e.stopPropagation();
+        if (this.annotator.currentTool !== 'select') return; // Don't trigger when drawing
+        if (this.viewer.bindingMode === 'rtl') this.viewer.nextPage();
+        else this.viewer.prevPage();
+      };
+    }
+
+    if (tapRight) {
+      tapRight.onclick = (e) => {
+        e.stopPropagation();
+        if (this.annotator.currentTool !== 'select') return; // Don't trigger when drawing
+        if (this.viewer.bindingMode === 'rtl') this.viewer.prevPage();
+        else this.viewer.nextPage();
+      };
+    }
+
+    // Touch Swipe / Flick Gesture Handler
+    let touchStartX = 0;
+    let touchStartY = 0;
+    this.viewerContainer.addEventListener('touchstart', (e) => {
+      if (this.annotator.currentTool !== 'select') return;
+      if (e.touches.length === 1) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    this.viewerContainer.addEventListener('touchend', (e) => {
+      if (this.annotator.currentTool !== 'select') return;
+      if (e.changedTouches.length === 1) {
+        const deltaX = e.changedTouches[0].clientX - touchStartX;
+        const deltaY = e.changedTouches[0].clientY - touchStartY;
+
+        // Horizontal swipe threshold: > 40px, Vertical threshold: < 60px
+        if (Math.abs(deltaX) > 40 && Math.abs(deltaY) < 60) {
+          if (deltaX < 0) {
+            // Swipe Left -> Next Page in LTR, Prev Page in RTL
+            if (this.viewer.bindingMode === 'rtl') this.viewer.prevPage();
+            else this.viewer.nextPage();
+          } else {
+            // Swipe Right -> Prev Page in LTR, Next Page in RTL
+            if (this.viewer.bindingMode === 'rtl') this.viewer.nextPage();
+            else this.viewer.prevPage();
+          }
+        }
+      }
+    }, { passive: true });
 
     // 2. View Mode Toggle
     document.getElementById('opt-view-spread').onclick = (e) => {

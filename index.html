@@ -188,6 +188,21 @@
 
       <!-- Central Maximized PDF Viewer Container -->
       <div id="viewer-container">
+        <!-- iPad Touch Tap Zones (Screen Edge Page Turners) -->
+        <div id="tap-zone-left" class="tap-zone tap-zone-left" title="ページ切り替え">
+          <div class="tap-zone-ripple">◀</div>
+        </div>
+
+        <div id="tap-zone-right" class="tap-zone tap-zone-right" title="ページ切り替え">
+          <div class="tap-zone-ripple">▶</div>
+        </div>
+
+        <!-- Floating Bottom Fast-Scrum Page Slider -->
+        <div id="floating-page-bar" class="floating-page-bar">
+          <span id="floating-page-label" style="font-size: 0.78rem; font-weight: 600; min-width: 70px; color: var(--text-primary);">P. 1 / 1</span>
+          <input type="range" id="floating-page-slider" class="floating-page-slider" min="1" max="1" value="1" title="ページ早送りドラッグ">
+        </div>
+
         <div id="pdf-spread-view"></div>
       </div>
 
