@@ -163,6 +163,16 @@ class App {
 
     this.viewerContainer.addEventListener('touchend', (e) => {
       if (this.annotator.currentTool !== 'select') return;
+
+      // DO NOT flip page on swipe if zoomed in or if viewer has scroll overflow
+      const isZoomedIn = (this.viewer.currentCssScale > 1.05) || 
+                         (this.viewer.scaleMode === 'custom' && this.viewer.customScale > 1.05) ||
+                         (this.viewerContainer.scrollWidth > this.viewerContainer.clientWidth + 15) ||
+                         (this.viewerContainer.scrollHeight > this.viewerContainer.clientHeight + 15) ||
+                         (this.viewer.scaleMode !== 'fit-height' && this.viewer.scaleMode !== 'fit-width');
+
+      if (isZoomedIn) return; // Allow smooth panning/scrolling without flipping pages!
+
       if (e.changedTouches.length === 1) {
         const deltaX = e.changedTouches[0].clientX - touchStartX;
         const deltaY = e.changedTouches[0].clientY - touchStartY;

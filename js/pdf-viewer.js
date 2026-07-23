@@ -174,6 +174,10 @@ export class PDFViewer {
     const scaleH = availH / targetH;
 
     if (this.scaleMode === 'fit-width') {
+      // In spread view mode, fit-width should fit within screen bounds to prevent clipping
+      if (this.viewMode === 'spread') {
+        return Math.min(scaleW, scaleH);
+      }
       return scaleW;
     } else {
       return Math.min(scaleW, scaleH);
