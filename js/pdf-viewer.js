@@ -82,15 +82,23 @@ export class PDFViewer {
   updateSpreadViewCentering() {
     setTimeout(() => {
       if (!this.spreadView || !this.container) return;
-      const isOverflowingW = this.spreadView.scrollWidth > this.container.clientWidth;
-      const isOverflowingH = this.spreadView.scrollHeight > this.container.clientHeight;
+      const isOverflowingW = this.spreadView.scrollWidth > (this.container.clientWidth + 5);
+      const isOverflowingH = this.spreadView.scrollHeight > (this.container.clientHeight + 5);
 
-      if (isOverflowingW || isOverflowingH) {
+      if (isOverflowingW) {
+        this.container.style.justifyContent = 'flex-start';
         this.spreadView.style.margin = '0';
       } else {
+        this.container.style.justifyContent = 'center';
         this.spreadView.style.margin = 'auto';
       }
-    }, 50);
+
+      if (isOverflowingH) {
+        this.container.style.alignItems = 'flex-start';
+      } else {
+        this.container.style.alignItems = 'center';
+      }
+    }, 60);
   }
 
   calculatePagesForCurrentView() {
