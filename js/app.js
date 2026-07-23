@@ -617,7 +617,11 @@ class App {
 
     const index = this.tabs.findIndex(t => t.id === tabId);
     if (index !== -1) {
-      this.tabs.splice(index, 1);
+      const closedTab = this.tabs.splice(index, 1)[0];
+      // Free buffer memory for closed tab
+      closedTab.buffer = null;
+      closedTab.annotations = null;
+
       if (this.activeTabId === tabId) {
         const nextActiveTab = this.tabs[Math.max(0, index - 1)];
         this.switchTab(nextActiveTab.id);

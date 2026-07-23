@@ -142,6 +142,7 @@ export class PDFViewer {
     this.lastComputedScale = computedScale;
 
     const viewport = page.getViewport({ scale: computedScale });
+    const dpr = Math.min(window.devicePixelRatio || 1, 2); // HiDPI Retina crisp text rendering (max 2x for memory efficiency)
 
     const cardDiv = document.createElement('div');
     cardDiv.className = 'pdf-page-card';
@@ -152,12 +153,15 @@ export class PDFViewer {
     const canvas = document.createElement('canvas');
     canvas.className = 'pdf-canvas';
     const ctx = canvas.getContext('2d');
-    canvas.width = Math.floor(viewport.width);
-    canvas.height = Math.floor(viewport.height);
+    canvas.width = Math.floor(viewport.width * dpr);
+    canvas.height = Math.floor(viewport.height * dpr);
+    canvas.style.width = `${Math.floor(viewport.width)}px`;
+    canvas.style.height = `${Math.floor(viewport.height)}px`;
 
     const renderContext = {
       canvasContext: ctx,
-      viewport: viewport
+      viewport: viewport,
+      transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : null
     };
 
     await page.render(renderContext).promise;
@@ -165,11 +169,25 @@ export class PDFViewer {
 
     const annotCanvas = document.createElement('canvas');
     annotCanvas.className = 'annotation-layer-canvas';
-    annotCanvas.width = Math.floor(viewport.width);
-    annotCanvas.height = Math.floor(viewport.height);
+    annotCanvas.width = Math.floor(viewport.width * dpr);
+    annotCanvas.height = Math.floor(viewport.height * dpr);
+    annotCanvas.style.width = `${Math.floor(viewport.width)}px`;
+    annotCanvas.style.height = `${Math.floor(viewport.height)}px`;
     cardDiv.appendChild(annotCanvas);
 
     return cardDiv;
+  }
+
+  destroy() {
+    if (this.pdfDoc) {
+      try {
+        this.pdfDoc.destroy();
+      } catch (e) {}
+      this.pdfDoc = null;
+    }
+    if (this.spreadView) {
+      this.spreadView.innerHTML = '';
+    }
   }
 
   calculateScale(baseViewport, visiblePagesCount = 1) {
