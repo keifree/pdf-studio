@@ -583,6 +583,82 @@ class App {
         this.showToast('PDF書き出しエラー', 'warning');
       }
     };
+
+    // 13. PDF Transparent Text & OCR Search Bar Event Handlers
+    const btnToggleSearch = document.getElementById('btn-toggle-search');
+    const searchBarContainer = document.getElementById('search-bar-container');
+    const searchInput = document.getElementById('search-input');
+    const searchCountLabel = document.getElementById('search-count-label');
+    const btnSearchPrev = document.getElementById('btn-search-prev');
+    const btnSearchNext = document.getElementById('btn-search-next');
+    const btnSearchClose = document.getElementById('btn-search-close');
+
+    const toggleSearchBar = (show) => {
+      if (!searchBarContainer) return;
+      if (show === undefined) show = searchBarContainer.style.display === 'none';
+      searchBarContainer.style.display = show ? 'flex' : 'none';
+      if (show && searchInput) {
+        searchInput.focus();
+        searchInput.select();
+      } else {
+        this.viewer.clearSearchHighlights();
+      }
+    };
+
+    if (btnToggleSearch) btnToggleSearch.onclick = () => toggleSearchBar();
+    if (btnSearchClose) btnSearchClose.onclick = () => toggleSearchBar(false);
+
+    let searchDebounce;
+    if (searchInput) {
+      searchInput.oninput = () => {
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(async () => {
+          const query = searchInput.value;
+          const { totalMatches, currentIndex } = await this.viewer.searchDocument(query);
+          if (searchCountLabel) {
+            searchCountLabel.textContent = totalMatches > 0 ? `${currentIndex + 1} / ${totalMatches}` : '0 / 0';
+          }
+        }, 250);
+      };
+
+      searchInput.onkeydown = async (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (e.shiftKey) {
+            await this.viewer.jumpToSearchMatch(this.viewer.currentSearchIndex - 1);
+          } else {
+            await this.viewer.jumpToSearchMatch(this.viewer.currentSearchIndex + 1);
+          }
+          if (searchCountLabel && this.viewer.searchResults) {
+            searchCountLabel.textContent = `${this.viewer.currentSearchIndex + 1} / ${this.viewer.searchResults.length}`;
+          }
+        } else if (e.key === 'Escape') {
+          toggleSearchBar(false);
+        }
+      };
+    }
+
+    if (btnSearchPrev) {
+      btnSearchPrev.onclick = async () => {
+        if (this.viewer.searchResults && this.viewer.searchResults.length > 0) {
+          await this.viewer.jumpToSearchMatch(this.viewer.currentSearchIndex - 1);
+          if (searchCountLabel) {
+            searchCountLabel.textContent = `${this.viewer.currentSearchIndex + 1} / ${this.viewer.searchResults.length}`;
+          }
+        }
+      };
+    }
+
+    if (btnSearchNext) {
+      btnSearchNext.onclick = async () => {
+        if (this.viewer.searchResults && this.viewer.searchResults.length > 0) {
+          await this.viewer.jumpToSearchMatch(this.viewer.currentSearchIndex + 1);
+          if (searchCountLabel) {
+            searchCountLabel.textContent = `${this.viewer.currentSearchIndex + 1} / ${this.viewer.searchResults.length}`;
+          }
+        }
+      };
+    }
   }
 
   initDraggableToolbar() {

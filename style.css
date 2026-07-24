@@ -503,6 +503,89 @@ body {
   color: var(--accent-light);
 }
 
+/* PDF.js TextLayer Overlay (Transparent OCR Text & Native Selection) */
+.textLayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  opacity: 0.25;
+  line-height: 1.0;
+  user-select: text;
+  pointer-events: auto;
+  z-index: 10;
+}
+
+.textLayer span {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+
+.textLayer ::selection {
+  background: rgba(99, 102, 241, 0.4);
+  color: transparent;
+}
+
+.textLayer span.search-match {
+  background-color: rgba(255, 225, 0, 0.7);
+  border-radius: 2px;
+  color: #000000 !important;
+}
+
+.textLayer span.search-match-active {
+  background-color: rgba(255, 110, 0, 0.95);
+  border-radius: 2px;
+  color: #ffffff !important;
+  box-shadow: 0 0 8px rgba(255, 110, 0, 0.8);
+}
+
+/* Search Bar Floating Overlay */
+.search-bar-container {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 920;
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  padding: 4px 8px 4px 12px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+}
+
+.search-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+}
+
+.search-input-wrapper input {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  outline: none;
+  width: 180px;
+}
+
+.search-count {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--accent-light);
+  white-space: nowrap;
+  padding: 0 4px;
+}
+
 .orient-btn {
   background: transparent;
   border: none;

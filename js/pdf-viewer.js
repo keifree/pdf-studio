@@ -167,6 +167,28 @@ export class PDFViewer {
     await page.render(renderContext).promise;
     cardDiv.appendChild(canvas);
 
+    // Render TextLayer for transparent OCR text & native text selection/search
+    try {
+      const textContent = await page.getTextContent();
+      const textLayerDiv = document.createElement('div');
+      textLayerDiv.className = 'textLayer';
+      textLayerDiv.style.width = `${Math.floor(viewport.width)}px`;
+      textLayerDiv.style.height = `${Math.floor(viewport.height)}px`;
+      textLayerDiv.style.setProperty('--scale-factor', viewport.scale);
+
+      if (window.pdfjsLib.renderTextLayer) {
+        await window.pdfjsLib.renderTextLayer({
+          textContentSource: textContent,
+          container: textLayerDiv,
+          viewport: viewport,
+          textDivs: []
+        }).promise;
+      }
+      cardDiv.appendChild(textLayerDiv);
+    } catch (textErr) {
+      console.warn('TextLayer render notice:', textErr);
+    }
+
     const annotCanvas = document.createElement('canvas');
     annotCanvas.className = 'annotation-layer-canvas';
     annotCanvas.width = Math.floor(viewport.width * dpr);
@@ -176,6 +198,82 @@ export class PDFViewer {
     cardDiv.appendChild(annotCanvas);
 
     return cardDiv;
+  }
+
+  async searchDocument(query) {
+    if (!this.pdfDoc || !query || query.trim() === '') {
+      this.searchResults = [];
+      this.currentSearchIndex = -1;
+      this.clearSearchHighlights();
+      return { totalMatches: 0, currentIndex: -1 };
+    }
+
+    const cleanQuery = query.trim().toLowerCase();
+    const results = [];
+
+    for (let pageNum = 1; pageNum <= this.totalPages; pageNum++) {
+      const page = await this.pdfDoc.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map(item => item.str).join(' ');
+      
+      let searchIndex = 0;
+      const pageTextLower = pageText.toLowerCase();
+      while ((searchIndex = pageTextLower.indexOf(cleanQuery, searchIndex)) !== -1) {
+        results.push({
+          pageNum,
+          charIndex: searchIndex,
+          query: cleanQuery
+        });
+        searchIndex += cleanQuery.length;
+      }
+    }
+
+    this.searchResults = results;
+    this.currentSearchIndex = results.length > 0 ? 0 : -1;
+    
+    if (results.length > 0) {
+      await this.jumpToSearchMatch(0);
+    } else {
+      this.clearSearchHighlights();
+    }
+
+    return { totalMatches: results.length, currentIndex: this.currentSearchIndex };
+  }
+
+  async jumpToSearchMatch(index) {
+    if (!this.searchResults || this.searchResults.length === 0) return;
+    this.currentSearchIndex = (index + this.searchResults.length) % this.searchResults.length;
+    const match = this.searchResults[this.currentSearchIndex];
+    
+    if (this.currentPage !== match.pageNum) {
+      this.currentPage = match.pageNum;
+      await this.render();
+    }
+
+    this.highlightSearchMatches(match.query, this.currentSearchIndex);
+  }
+
+  highlightSearchMatches(query) {
+    const textLayers = document.querySelectorAll('.textLayer');
+    textLayers.forEach(layer => {
+      const spans = layer.querySelectorAll('span');
+      spans.forEach(span => {
+        const text = span.textContent;
+        if (!text) return;
+        const lowerText = text.toLowerCase();
+        if (lowerText.includes(query.toLowerCase())) {
+          span.classList.add('search-match');
+        } else {
+          span.classList.remove('search-match', 'search-match-active');
+        }
+      });
+    });
+  }
+
+  clearSearchHighlights() {
+    document.querySelectorAll('.textLayer span').forEach(span => {
+      span.classList.remove('search-match', 'search-match-active');
+    });
   }
 
   destroy() {
