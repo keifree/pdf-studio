@@ -3,7 +3,7 @@
  * Caches core app assets for offline launch & satisfies PWA installation criteria.
  */
 
-const CACHE_NAME = 'pdf-studio-v120';
+const CACHE_NAME = 'pdf-studio-v130';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

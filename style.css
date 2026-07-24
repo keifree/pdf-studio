@@ -511,10 +511,10 @@ body {
   right: 0;
   bottom: 0;
   overflow: hidden;
-  opacity: 0.25;
+  opacity: 1.0;
   line-height: 1.0;
   user-select: text;
-  pointer-events: auto;
+  pointer-events: none;
   z-index: 10;
 }
 
@@ -524,6 +524,7 @@ body {
   white-space: pre;
   cursor: text;
   transform-origin: 0% 0%;
+  pointer-events: auto;
 }
 
 .textLayer ::selection {
@@ -532,12 +533,14 @@ body {
 }
 
 .textLayer mark.search-word-match {
-  background-color: #fde047;
+  background-color: #facc15 !important;
   color: #000000 !important;
   border-radius: 2px;
-  padding: 0 2px;
-  font-weight: 600;
-  box-shadow: 0 0 6px rgba(253, 224, 71, 0.9);
+  padding: 1px 3px;
+  font-weight: 700;
+  box-shadow: 0 0 8px rgba(250, 204, 21, 0.95);
+  display: inline-block;
+  line-height: 1.1;
 }
 
 /* Search Bar Floating Overlay */
