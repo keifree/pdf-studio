@@ -532,13 +532,23 @@ body {
   color: transparent;
 }
 
+input[type="range"] {
+  touch-action: pan-x !important;
+  pointer-events: auto !important;
+}
+
+.textLayer span.search-match {
+  background-color: rgba(250, 204, 21, 0.4) !important;
+  border-radius: 2px;
+}
+
 .textLayer mark.search-word-match {
   background-color: #facc15 !important;
   color: #000000 !important;
   border-radius: 2px;
   padding: 1px 3px;
   font-weight: 700;
-  box-shadow: 0 0 8px rgba(250, 204, 21, 0.95);
+  box-shadow: 0 0 10px rgba(250, 204, 21, 1.0);
   display: inline-block;
   line-height: 1.1;
 }
