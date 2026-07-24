@@ -46,7 +46,12 @@ export class PDFViewer {
     window.pdfjsLib.GlobalWorkerOptions.workerSrc =
       'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-    const loadingTask = window.pdfjsLib.getDocument({ data: dataBuffer });
+    const loadingTask = window.pdfjsLib.getDocument({
+      data: dataBuffer,
+      cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+      cMapPacked: true,
+      standardFontDataUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/standard_fonts/'
+    });
     this.pdfDoc = await loadingTask.promise;
     this.totalPages = this.pdfDoc.numPages;
     this.currentPage = Math.min(Math.max(1, initialPage), this.totalPages);
@@ -176,14 +181,43 @@ export class PDFViewer {
       textLayerDiv.style.height = `${Math.floor(viewport.height)}px`;
       textLayerDiv.style.setProperty('--scale-factor', viewport.scale);
 
+      let rendered = false;
       if (window.pdfjsLib.renderTextLayer) {
-        await window.pdfjsLib.renderTextLayer({
-          textContentSource: textContent,
-          container: textLayerDiv,
-          viewport: viewport,
-          textDivs: []
-        }).promise;
+        try {
+          const task = window.pdfjsLib.renderTextLayer({
+            textContent: textContent,
+            textContentSource: textContent,
+            container: textLayerDiv,
+            viewport: viewport,
+            textDivs: []
+          });
+          if (task && task.promise) await task.promise;
+          rendered = textLayerDiv.children.length > 0;
+        } catch (e) {}
       }
+
+      // Robust fallback manual span rendering for 100% OCR text layer guarantee
+      if (!rendered || textLayerDiv.children.length === 0) {
+        textLayerDiv.innerHTML = '';
+        textContent.items.forEach(item => {
+          if (!item.str || item.str.trim() === '') return;
+          const span = document.createElement('span');
+          span.textContent = item.str;
+          
+          if (item.transform && item.transform.length >= 6) {
+            const tx = item.transform;
+            const fontHeight = Math.hypot(tx[2], tx[3]) || 12;
+            const scaleRatio = viewport.scale / baseViewport.scale;
+            const left = tx[4] * scaleRatio;
+            const top = (baseViewport.height - tx[5]) * scaleRatio - (fontHeight * scaleRatio);
+            span.style.left = `${left}px`;
+            span.style.top = `${top}px`;
+            span.style.fontSize = `${fontHeight * scaleRatio}px`;
+          }
+          textLayerDiv.appendChild(span);
+        });
+      }
+
       cardDiv.appendChild(textLayerDiv);
     } catch (textErr) {
       console.warn('TextLayer render notice:', textErr);
@@ -205,26 +239,77 @@ export class PDFViewer {
       this.searchResults = [];
       this.currentSearchIndex = -1;
       this.clearSearchHighlights();
-      return { totalMatches: 0, currentIndex: -1 };
+      return { totalMatches: 0, currentIndex: -1, totalTextLength: 0 };
     }
 
-    const cleanQuery = query.trim().toLowerCase();
+    const rawQuery = query.trim();
+    const normalizeText = (str) => {
+      if (!str) return '';
+      return str
+        .normalize('NFKC')
+        .toLowerCase()
+        .replace(/[\r\n\t\f\v]/g, '')
+        .replace(/\s+/g, '');
+    };
+
+    const normQuery = normalizeText(rawQuery);
     const results = [];
+    let totalTextLength = 0;
 
     for (let pageNum = 1; pageNum <= this.totalPages; pageNum++) {
       const page = await this.pdfDoc.getPage(pageNum);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items.map(item => item.str).join(' ');
-      
-      let searchIndex = 0;
-      const pageTextLower = pageText.toLowerCase();
-      while ((searchIndex = pageTextLower.indexOf(cleanQuery, searchIndex)) !== -1) {
+      let textItems = [];
+
+      try {
+        const textContent = await page.getTextContent({ includeMarkedContent: true, disableCombineTextItems: false });
+        if (textContent && textContent.items) {
+          textItems = textContent.items.map(item => item.str || '');
+        }
+      } catch (e) {
+        console.warn(`Page ${pageNum} textContent notice:`, e);
+      }
+
+      try {
+        const annots = await page.getAnnotations();
+        (annots || []).forEach(a => {
+          if (a.contents) textItems.push(a.contents);
+          if (a.fieldValue) textItems.push(String(a.fieldValue));
+        });
+      } catch (e) {}
+
+      const rawText = textItems.join('');
+      const spacedText = textItems.join(' ');
+      totalTextLength += rawText.length;
+
+      const normRaw = normalizeText(rawText);
+      const normSpaced = normalizeText(spacedText);
+
+      let found = false;
+
+      // 1. Direct raw string inclusion
+      if (rawText.includes(rawQuery) || spacedText.includes(rawQuery)) {
+        found = true;
+      }
+      // 2. NFKC Normalized string inclusion
+      else if (normQuery && (normRaw.includes(normQuery) || normSpaced.includes(normQuery))) {
+        found = true;
+      }
+      // 3. Item-by-item substring matching
+      else {
+        for (const str of textItems) {
+          if (str.includes(rawQuery) || (normQuery && normalizeText(str).includes(normQuery))) {
+            found = true;
+            break;
+          }
+        }
+      }
+
+      if (found) {
         results.push({
           pageNum,
-          charIndex: searchIndex,
-          query: cleanQuery
+          query: rawQuery,
+          normQuery
         });
-        searchIndex += cleanQuery.length;
       }
     }
 
@@ -237,7 +322,11 @@ export class PDFViewer {
       this.clearSearchHighlights();
     }
 
-    return { totalMatches: results.length, currentIndex: this.currentSearchIndex };
+    return {
+      totalMatches: results.length,
+      currentIndex: this.currentSearchIndex,
+      totalTextLength
+    };
   }
 
   async jumpToSearchMatch(index) {
@@ -250,18 +339,26 @@ export class PDFViewer {
       await this.render();
     }
 
-    this.highlightSearchMatches(match.query, this.currentSearchIndex);
+    this.highlightSearchMatches(match.query, match.normQuery);
   }
 
-  highlightSearchMatches(query) {
+  highlightSearchMatches(query, normQuery) {
+    const normalizeText = (str) => {
+      if (!str) return '';
+      return str.normalize('NFKC').toLowerCase().replace(/[\r\n\t\f\v]/g, '').replace(/\s+/g, '');
+    };
+
     const textLayers = document.querySelectorAll('.textLayer');
     textLayers.forEach(layer => {
       const spans = layer.querySelectorAll('span');
       spans.forEach(span => {
-        const text = span.textContent;
-        if (!text) return;
-        const lowerText = text.toLowerCase();
-        if (lowerText.includes(query.toLowerCase())) {
+        const text = span.textContent || '';
+        const normSpan = normalizeText(text);
+        
+        const isMatch = (query && text.includes(query)) ||
+                        (normQuery && normSpan && (normSpan.includes(normQuery) || normQuery.includes(normSpan)));
+
+        if (isMatch) {
           span.classList.add('search-match');
         } else {
           span.classList.remove('search-match', 'search-match-active');

@@ -614,11 +614,20 @@ class App {
         clearTimeout(searchDebounce);
         searchDebounce = setTimeout(async () => {
           const query = searchInput.value;
-          const { totalMatches, currentIndex } = await this.viewer.searchDocument(query);
+          const { totalMatches, currentIndex, totalTextLength } = await this.viewer.searchDocument(query);
           if (searchCountLabel) {
             searchCountLabel.textContent = totalMatches > 0 ? `${currentIndex + 1} / ${totalMatches}` : '0 / 0';
           }
-        }, 250);
+          if (query && query.trim() !== '') {
+            if (totalMatches > 0) {
+              this.showToast(`【検索成功】"${query.trim()}" : ${totalMatches}件ヒット`, 'info');
+            } else if (totalTextLength === 0) {
+              this.showToast(`【注意】このPDFには読み取り可能なテキスト層が含まれていません (抽出: 0文字)`, 'warning');
+            } else {
+              this.showToast(`【検索結果 0件】"${query.trim()}" (全${totalTextLength}文字中)`, 'warning');
+            }
+          }
+        }, 300);
       };
 
       searchInput.onkeydown = async (e) => {
