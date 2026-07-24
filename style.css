@@ -568,12 +568,16 @@ input[type="range"]::-webkit-slider-thumb {
 .textLayer mark.search-word-match {
   background-color: #facc15 !important;
   color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+  opacity: 1.0 !important;
   border-radius: 2px;
   padding: 1px 3px;
   font-weight: 700;
   box-shadow: 0 0 10px rgba(250, 204, 21, 1.0);
-  display: inline-block;
+  display: inline-block !important;
   line-height: 1.1;
+  position: relative !important;
+  z-index: 9999 !important;
 }
 
 /* Search Bar Floating Overlay */

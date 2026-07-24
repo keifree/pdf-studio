@@ -77,6 +77,12 @@ export class PDFViewer {
     this.applyThemeFilters();
     this.updateSpreadViewCentering();
 
+    if (this.currentSearchQuery) {
+      setTimeout(() => {
+        this.highlightSearchMatches(this.currentSearchQuery, this.currentSearchNormQuery);
+      }, 50);
+    }
+
     if (this.onPageChange) {
       this.onPageChange(this.currentPage, this.totalPages);
     }
@@ -314,13 +320,23 @@ export class PDFViewer {
     }
 
     this.searchResults = results;
-    this.currentSearchIndex = results.length > 0 ? 0 : -1;
     
+    // Select match index nearest to current reading page (e.g. Page 200)
+    let nearestIndex = 0;
     if (results.length > 0) {
-      await this.jumpToSearchMatch(0);
-    } else {
-      this.clearSearchHighlights();
+      let minDistance = Infinity;
+      results.forEach((m, idx) => {
+        const dist = Math.abs(m.pageNum - this.currentPage);
+        if (dist < minDistance) {
+          minDistance = dist;
+          nearestIndex = idx;
+        }
+      });
     }
+    this.currentSearchIndex = results.length > 0 ? nearestIndex : -1;
+
+    // Apply highlights to currently visible page without forcing page jump while typing
+    this.highlightSearchMatches(rawQuery, normQuery);
 
     return {
       totalMatches: results.length,
@@ -334,42 +350,63 @@ export class PDFViewer {
     this.currentSearchIndex = (index + this.searchResults.length) % this.searchResults.length;
     const match = this.searchResults[this.currentSearchIndex];
     
-    if (this.currentPage !== match.pageNum) {
-      this.currentPage = match.pageNum;
-      await this.render();
-    }
-
+    this.currentPage = match.pageNum;
+    await this.render();
     this.highlightSearchMatches(match.query, match.normQuery);
   }
 
   highlightSearchMatches(query, normQuery) {
+    if (!query && !normQuery) return;
+    this.currentSearchQuery = query;
+    this.currentSearchNormQuery = normQuery;
+
     const normalizeText = (str) => {
       if (!str) return '';
       return str.normalize('NFKC').toLowerCase().replace(/[\r\n\t\f\v]/g, '').replace(/\s+/g, '');
     };
 
-    const textLayers = document.querySelectorAll('.textLayer');
-    textLayers.forEach(layer => {
-      const spans = layer.querySelectorAll('span');
-      spans.forEach(span => {
-        const text = span.textContent || '';
-        const normSpan = normalizeText(text);
-        
-        const isMatch = (query && text.includes(query)) ||
-                        (normQuery && normSpan && (normSpan.includes(normQuery) || normQuery.includes(normSpan)));
+    const normQ = normQuery || normalizeText(query);
+    const escapeRegex = (s) => s.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
 
-        if (isMatch) {
-          span.classList.add('search-match');
-        } else {
-          span.classList.remove('search-match', 'search-match-active');
-        }
+    const applyHighlighting = () => {
+      const textLayers = document.querySelectorAll('.textLayer');
+      textLayers.forEach(layer => {
+        const spans = layer.querySelectorAll('span');
+        spans.forEach(span => {
+          if (!span.dataset.rawText) {
+            span.dataset.rawText = span.textContent || '';
+          }
+          const origText = span.dataset.rawText;
+          if (!origText || origText.trim() === '') return;
+
+          const normSpan = normalizeText(origText);
+
+          if (query && origText.toLowerCase().includes(query.toLowerCase())) {
+            const reg = new RegExp(`(${escapeRegex(query)})`, 'gi');
+            span.innerHTML = origText.replace(reg, '<mark class="search-word-match">$1</mark>');
+          } else if (normQ && normSpan && (normSpan.includes(normQ) || normQ.includes(normSpan))) {
+            span.innerHTML = `<mark class="search-word-match">${origText}</mark>`;
+          } else {
+            span.textContent = origText;
+          }
+        });
       });
-    });
+    };
+
+    applyHighlighting();
+    setTimeout(applyHighlighting, 80);
+    setTimeout(applyHighlighting, 280);
   }
 
   clearSearchHighlights() {
+    this.currentSearchQuery = null;
+    this.currentSearchNormQuery = null;
+    this.savedSearchOriginPage = null;
     document.querySelectorAll('.textLayer span').forEach(span => {
-      span.classList.remove('search-match', 'search-match-active');
+      if (span.dataset.rawText) {
+        span.textContent = span.dataset.rawText;
+      }
+      span.classList.remove('search-match');
     });
   }
 

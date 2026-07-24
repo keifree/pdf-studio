@@ -123,6 +123,12 @@ class App {
       document.getElementById('current-page-num').value = current;
       document.getElementById('total-pages').textContent = total;
       
+      const scrubberSlider = document.getElementById('page-scrubber-slider');
+      if (scrubberSlider) {
+        scrubberSlider.max = total;
+        scrubberSlider.value = current;
+      }
+
       // Sync Floating Page Slider
       const floatingLabel = document.getElementById('floating-page-label');
       const floatingSlider = document.getElementById('floating-page-slider');
@@ -144,6 +150,51 @@ class App {
       const pageNum = parseInt(e.target.value, 10);
       if (!isNaN(pageNum)) this.viewer.goToPage(pageNum);
     };
+
+    let sliderThrottleTimer = null;
+    const syncSliderDrag = (slider) => {
+      if (!slider) return;
+
+      const handleSliderInput = (e) => {
+        const p = parseInt(e.target.value, 10);
+        if (isNaN(p)) return;
+
+        // Immediately update page labels on UI
+        const pageInput = document.getElementById('current-page-num');
+        const floatingLabel = document.getElementById('floating-page-label');
+        if (pageInput) pageInput.value = p;
+        if (floatingLabel) floatingLabel.textContent = `P. ${p} / ${this.viewer.totalPages}`;
+
+        // Sync sibling sliders
+        const sidebarSlider = document.getElementById('page-scrubber-slider');
+        const floatSlider = document.getElementById('floating-page-slider');
+        if (sidebarSlider && sidebarSlider !== slider) sidebarSlider.value = p;
+        if (floatSlider && floatSlider !== slider) floatSlider.value = p;
+
+        // Throttle canvas page rendering so JS thread doesn't freeze
+        if (!sliderThrottleTimer) {
+          sliderThrottleTimer = setTimeout(() => {
+            sliderThrottleTimer = null;
+            this.viewer.goToPage(p);
+          }, 40);
+        }
+      };
+
+      slider.oninput = handleSliderInput;
+      slider.onchange = (e) => {
+        clearTimeout(sliderThrottleTimer);
+        sliderThrottleTimer = null;
+        const p = parseInt(e.target.value, 10);
+        if (!isNaN(p)) this.viewer.goToPage(p);
+      };
+
+      slider.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: false });
+      slider.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: false });
+      slider.addEventListener('pointerdown', (e) => e.stopPropagation());
+    };
+
+    syncSliderDrag(document.getElementById('page-scrubber-slider'));
+    syncSliderDrag(document.getElementById('floating-page-slider'));
 
     // 5. Dynamic Zoom Sync & Reset Buttons
     const zoomSelect = document.getElementById('zoom-select');

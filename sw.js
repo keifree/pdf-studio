@@ -3,7 +3,7 @@
  * Caches core app assets for offline launch & satisfies PWA installation criteria.
  */
 
-const CACHE_NAME = 'pdf-studio-v160';
+const CACHE_NAME = 'pdf-studio-v300';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -29,6 +29,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
+            console.log('Purging old PWA cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -39,25 +40,23 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Pass Google Drive API / OAuth requests directly to network
-  if (event.request.url.includes('googleapis.com') || event.request.url.includes('google.com')) {
+  // Pass Google Drive API / external requests directly to network
+  if (event.request.url.includes('googleapis.com') || event.request.url.includes('google.com') || event.request.url.includes('jsdelivr.net')) {
     return;
   }
 
+  // Network-First strategy for local app code files
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Return cached asset, update cache in background
-        fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, networkResponse);
-            });
-          }
-        }).catch(() => {});
-        return cachedResponse;
+    fetch(event.request).then((networkResponse) => {
+      if (networkResponse && networkResponse.status === 200 && event.request.method === 'GET') {
+        const responseClone = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseClone);
+        });
       }
-      return fetch(event.request);
+      return networkResponse;
+    }).catch(() => {
+      return caches.match(event.request);
     })
   );
 });
