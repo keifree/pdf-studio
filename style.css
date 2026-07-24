@@ -531,17 +531,13 @@ body {
   color: transparent;
 }
 
-.textLayer span.search-match {
-  background-color: rgba(255, 225, 0, 0.7);
-  border-radius: 2px;
+.textLayer mark.search-word-match {
+  background-color: #fde047;
   color: #000000 !important;
-}
-
-.textLayer span.search-match-active {
-  background-color: rgba(255, 110, 0, 0.95);
   border-radius: 2px;
-  color: #ffffff !important;
-  box-shadow: 0 0 8px rgba(255, 110, 0, 0.8);
+  padding: 0 2px;
+  font-weight: 600;
+  box-shadow: 0 0 6px rgba(253, 224, 71, 0.9);
 }
 
 /* Search Bar Floating Overlay */
