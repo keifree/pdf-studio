@@ -546,20 +546,21 @@ body {
 
 /* Search Bar Floating Overlay */
 .search-bar-container {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 920;
-  background: rgba(15, 23, 42, 0.92);
+  position: fixed;
+  top: 60px;
+  right: 20px;
+  z-index: 99999;
+  background: rgba(15, 23, 42, 0.95);
   backdrop-filter: blur(16px);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-full);
-  padding: 4px 8px 4px 12px;
-  box-shadow: var(--shadow-lg);
+  padding: 6px 14px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   user-select: none;
+  max-width: calc(100vw - 32px);
 }
 
 .search-input-wrapper {
