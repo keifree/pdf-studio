@@ -592,6 +592,12 @@ class App {
         return;
       }
 
+      const hasAnnotations = Object.keys(this.annotator.annotations).length > 0;
+      if (hasAnnotations) {
+        const confirmSave = confirm("【重要】保存すると、現在描画されている線やテキストがPDFの画像として完全に定着（ベイク）されます。\n保存後に再び開いた際、消しゴムで消すことができなくなります。\n\n本当に上書き保存しますか？");
+        if (!confirmSave) return;
+      }
+
       try {
         this.showToast('Google Driveへ上書き保存中...', 'info');
         this.driveManager.currentDriveFile = activeTab.driveFile;
@@ -612,6 +618,12 @@ class App {
     document.getElementById('btn-download-pdf').onclick = async () => {
       const activeTab = this.getActiveTab();
       if (!activeTab || !activeTab.buffer) return;
+
+      const hasAnnotations = Object.keys(this.annotator.annotations).length > 0;
+      if (hasAnnotations) {
+        const confirmSave = confirm("【重要】ダウンロードすると、現在描画されている線やテキストがPDFの画像として完全に定着（ベイク）されます。\nダウンロードしたファイルを再び開いた際、消しゴムで消すことができなくなります。\n\nダウンロードを実行しますか？");
+        if (!confirmSave) return;
+      }
 
       try {
         this.showToast('右綴じ属性と注釈を埋め込んでダウンロード中...', 'info');

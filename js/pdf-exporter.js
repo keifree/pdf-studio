@@ -129,13 +129,16 @@ export class PDFExporter {
             color: rgb(rgbColor.r, rgbColor.g, rgbColor.b)
           });
 
-          // Text string
+          // Text string (converted to PNG to support Japanese/Unicode)
           const fontSize = isNorm ? shape.fontSizeNorm * pageHeight : 10 * scaleX;
-          page.drawText(`[引出: ${shape.text}]`, {
+          const pngBuffer = await this.renderCalloutToImage(shape.text, fontSize, shape.color || '#6366f1');
+          const image = await pdfDoc.embedPng(pngBuffer);
+          
+          page.drawImage(image, {
             x: Math.max(10, boxX),
-            y: Math.max(10, boxY),
-            size: fontSize,
-            color: rgb(rgbColor.r, rgbColor.g, rgbColor.b)
+            y: Math.max(10, boxY) - image.height / 4, // adjust for top-left anchor since drawImage uses bottom-left
+            width: image.width / 2,
+            height: image.height / 2
           });
         }
       }
@@ -143,16 +146,19 @@ export class PDFExporter {
       // C. Draw Plain Text Annotations
       const textAnnots = pageAnnots.textAnnots || [];
       for (const t of textAnnots) {
-        const rgbColor = this.hexToRgb(t.color || '#6366f1');
         const isNorm = t.fontSizeNorm !== undefined;
         const x = isNorm ? t.x * pageWidth : t.x * scaleX;
         const y = pageHeight - (isNorm ? t.y * pageHeight : t.y * scaleY);
+        const fontSize = isNorm ? t.fontSizeNorm * pageHeight : (t.fontSize || 14) * scaleX;
 
-        page.drawText(t.text, {
+        const pngBuffer = await this.textToImage(t.text, fontSize, t.color || '#6366f1');
+        const image = await pdfDoc.embedPng(pngBuffer);
+
+        page.drawImage(image, {
           x: Math.max(10, x),
-          y: Math.max(10, y),
-          size: isNorm ? t.fontSizeNorm * pageHeight : (t.fontSize || 14) * scaleX,
-          color: rgb(rgbColor.r, rgbColor.g, rgbColor.b)
+          y: Math.max(10, y) - image.height / 4,
+          width: image.width / 2,
+          height: image.height / 2
         });
       }
 
@@ -162,11 +168,16 @@ export class PDFExporter {
         const x = (c.xPercent / 100) * pageWidth;
         const y = pageHeight - ((c.yPercent / 100) * pageHeight);
 
-        page.drawText(`[注釈: ${c.author}] ${c.text}`, {
+        const textStr = `[注釈: ${c.author}] ${c.text}`;
+        const fontSize = 10;
+        const pngBuffer = await this.textToImage(textStr, fontSize, '#d97706', true);
+        const image = await pdfDoc.embedPng(pngBuffer);
+
+        page.drawImage(image, {
           x: Math.max(10, x),
-          y: Math.max(10, y),
-          size: 10,
-          color: rgb(0.96, 0.62, 0.04),
+          y: Math.max(10, y) - image.height / 4,
+          width: image.width / 2,
+          height: image.height / 2
         });
       }
     }
@@ -184,5 +195,72 @@ export class PDFExporter {
       g: ((num >> 8) & 255) / 255,
       b: (num & 255) / 255
     };
+  }
+
+  static async renderCalloutToImage(text, fontSize, borderColorHex) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const font = `${fontSize}px sans-serif`;
+    ctx.font = font;
+    
+    const metrics = ctx.measureText(text);
+    const boxWidth = Math.ceil(metrics.width) + 16;
+    const boxHeight = Math.ceil(fontSize) + 12;
+
+    canvas.width = boxWidth * 2;
+    canvas.height = boxHeight * 2;
+    ctx.scale(2, 2);
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+    ctx.strokeStyle = borderColorHex;
+    ctx.lineWidth = 1.5;
+    ctx.fillRect(0, 0, boxWidth, boxHeight);
+    ctx.strokeRect(0, 0, boxWidth, boxHeight);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = font;
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, 8, boxHeight / 2);
+
+    return new Promise(resolve => {
+      canvas.toBlob(blob => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsArrayBuffer(blob);
+      }, 'image/png');
+    });
+  }
+
+  static async textToImage(text, fontSize, colorHex, isComment = false) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const font = `${fontSize}px sans-serif`;
+    ctx.font = font;
+    
+    const metrics = ctx.measureText(text);
+    const width = Math.ceil(metrics.width) + 8;
+    const height = Math.ceil(fontSize * 1.5);
+
+    canvas.width = width * 2;
+    canvas.height = height * 2;
+    ctx.scale(2, 2);
+    
+    if (isComment) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillRect(0, 0, width, height);
+    }
+
+    ctx.font = font;
+    ctx.fillStyle = colorHex;
+    ctx.textBaseline = 'top';
+    ctx.fillText(text, 4, 4);
+
+    return new Promise(resolve => {
+      canvas.toBlob(blob => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsArrayBuffer(blob);
+      }, 'image/png');
+    });
   }
 }
