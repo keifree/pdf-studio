@@ -895,7 +895,7 @@ class App {
     }
   }
 
-  switchTab(tabId) {
+  async switchTab(tabId) {
     const targetTab = this.tabs.find(t => t.id === tabId);
     if (!targetTab) return;
 
@@ -913,7 +913,21 @@ class App {
     this.renderTabsUI();
     this.annotator.renderSidebarComments();
 
-    this.viewer.loadDocument(targetTab.buffer.slice(0), targetTab.currentPage);
+    await this.viewer.loadDocument(targetTab.buffer.slice(0), targetTab.currentPage);
+
+    try {
+      if (this.viewer.pdfDoc && typeof this.viewer.pdfDoc.getAttachments === 'function') {
+        const attachments = await this.viewer.pdfDoc.getAttachments();
+        if (attachments && attachments['antigravity_annotations.json']) {
+          const jsonBytes = attachments['antigravity_annotations.json'].content;
+          const jsonStr = new TextDecoder().decode(jsonBytes);
+          this.annotator.importAnnotations(jsonStr);
+          targetTab.annotations = this.annotator.annotations;
+        }
+      }
+    } catch (e) {
+      console.warn('Could not extract embedded annotations:', e);
+    }
   }
 
   closeTab(tabId, event) {

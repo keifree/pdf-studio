@@ -53,6 +53,35 @@ export class PDFViewer {
       standardFontDataUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/standard_fonts/'
     });
     this.pdfDoc = await loadingTask.promise;
+
+    this.ocgConfig = null;
+    try {
+      const ocgConfig = await this.pdfDoc.getOptionalContentConfig();
+      if (ocgConfig && ocgConfig.getOrder) {
+        let hasAntigravityLayer = false;
+        const checkGroups = (groups) => {
+          for (const item of groups) {
+             if (Array.isArray(item)) { checkGroups(item); }
+             else if (typeof item === 'string') {
+                const group = ocgConfig.getGroup(item);
+                if (group && group.name === 'AntigravityLayer') {
+                   ocgConfig.setVisibility(item, false);
+                   hasAntigravityLayer = true;
+                }
+             }
+          }
+        };
+        const order = ocgConfig.getOrder();
+        if (order) checkGroups(order);
+        
+        if (hasAntigravityLayer) {
+           this.ocgConfig = ocgConfig;
+        }
+      }
+    } catch (e) {
+      console.warn('OCG processing notice:', e);
+    }
+
     this.totalPages = this.pdfDoc.numPages;
     this.currentPage = Math.min(Math.max(1, initialPage), this.totalPages);
 
@@ -174,6 +203,10 @@ export class PDFViewer {
       viewport: viewport,
       transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : null
     };
+
+    if (this.ocgConfig) {
+      renderContext.optionalContentConfig = this.ocgConfig;
+    }
 
     await page.render(renderContext).promise;
     cardDiv.appendChild(canvas);

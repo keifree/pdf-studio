@@ -10,10 +10,36 @@ export class PDFExporter {
       throw new Error('pdf-lib library is not loaded');
     }
 
-    const { PDFDocument, PDFName, rgb } = window.PDFLib;
+    const { PDFDocument, PDFName, PDFOperator, rgb } = window.PDFLib;
 
     const pdfDoc = await PDFDocument.load(originalBuffer);
     const catalog = pdfDoc.catalog;
+
+    // --- Create OCG for AntigravityLayer ---
+    const ocgDict = pdfDoc.context.obj({
+      Type: 'OCG',
+      Name: 'AntigravityLayer'
+    });
+    const ocgRef = pdfDoc.context.register(ocgDict);
+
+    let ocProperties = catalog.get(PDFName.of('OCProperties'));
+    if (ocProperties) {
+      const ocgs = ocProperties.get(PDFName.of('OCGs'));
+      if (ocgs && typeof ocgs.push === 'function') ocgs.push(ocgRef);
+      const d = ocProperties.get(PDFName.of('D'));
+      if (d) {
+        const order = d.get(PDFName.of('Order'));
+        if (order && typeof order.push === 'function') order.push(ocgRef);
+        const on = d.get(PDFName.of('ON'));
+        if (on && typeof on.push === 'function') on.push(ocgRef);
+      }
+    } else {
+      ocProperties = pdfDoc.context.obj({
+        OCGs: [ocgRef],
+        D: { Order: [ocgRef], ON: [ocgRef], OFF: [] }
+      });
+      catalog.set(PDFName.of('OCProperties'), ocProperties);
+    }
 
     // 1. Embed ISO/Adobe Standard PDF Right-to-Left (右綴じ) Metadata
     if (bindingMode === 'rtl') {
@@ -58,6 +84,27 @@ export class PDFExporter {
       const canvasCard = document.querySelector(`.pdf-page-card[data-page-num="${pageNum}"]`);
       const scaleX = canvasCard ? pageWidth / canvasCard.clientWidth : 1.0;
       const scaleY = canvasCard ? pageHeight / canvasCard.clientHeight : 1.0;
+
+      // Add OCG to page resources
+      let resources = page.node.Resources();
+      if (!resources) {
+        resources = pdfDoc.context.obj({});
+        page.node.set(PDFName.of('Resources'), resources);
+      }
+      let properties = resources.get(PDFName.of('Properties'));
+      if (!properties) {
+        properties = pdfDoc.context.obj({});
+        resources.set(PDFName.of('Properties'), properties);
+      }
+      properties.set(PDFName.of('AntigravityLayer'), ocgRef);
+
+      // Begin Marked Content (OCG)
+      const hasContent = (pageAnnots.strokes?.length > 0) || (pageAnnots.shapes?.length > 0) || (pageAnnots.textAnnots?.length > 0) || (pageAnnots.comments?.length > 0);
+      if (hasContent) {
+        page.pushOperators(
+          PDFOperator.of('BDC', [PDFName.of('OC'), PDFName.of('AntigravityLayer')])
+        );
+      }
 
       // A. Draw Freehand Ink Strokes & Highlighters
       const strokes = pageAnnots.strokes || [];
@@ -180,7 +227,22 @@ export class PDFExporter {
           height: image.height / 2
         });
       }
+
+      // End Marked Content
+      if (hasContent) {
+        page.pushOperators(
+          PDFOperator.of('EMC')
+        );
+      }
     }
+
+    // 3. Attach Annotations JSON for re-editing
+    const jsonString = JSON.stringify(annotations);
+    const uint8Array = new TextEncoder().encode(jsonString);
+    await pdfDoc.attach(uint8Array, 'antigravity_annotations.json', {
+      mimeType: 'application/json',
+      description: 'Editable annotation data for Antigravity PDF Studio'
+    });
 
     const modifiedBytes = await pdfDoc.save();
     return modifiedBytes.buffer;

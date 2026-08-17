@@ -632,6 +632,21 @@ export class AnnotationManager {
     this.renderSidebarComments();
   }
 
+  importAnnotations(jsonString) {
+    try {
+      const parsed = JSON.parse(jsonString);
+      if (parsed) {
+        this.annotations = parsed;
+        this.historyStack = [];
+        this.redoStack = [];
+        this.refreshAllPageLayers();
+        this.renderSidebarComments();
+      }
+    } catch (e) {
+      console.error('Failed to import annotations JSON', e);
+    }
+  }
+
   hexToRgba(hex, alpha = 1.0) {
     let c = hex.replace('#', '');
     if (c.length === 3) c = c.split('').map(x => x + x).join('');
