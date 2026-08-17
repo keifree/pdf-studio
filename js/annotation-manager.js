@@ -125,33 +125,32 @@ export class AnnotationManager {
 
   handlePointerDown(e, pageNum, canvas, card) {
     const rect = canvas.getBoundingClientRect();
-    const scaleX = rect.width > 0 ? canvas.width / rect.width : 1;
-    const scaleY = rect.height > 0 ? canvas.height / rect.height : 1;
-
-    const x = (e.clientX - rect.left) * scaleX;
-    const y = (e.clientY - rect.top) * scaleY;
+    
+    // Normalize coordinates to 0.0 - 1.0 based on CSS bounding rect
+    const normX = rect.width > 0 ? (e.clientX - rect.left) / rect.width : 0;
+    const normY = rect.height > 0 ? (e.clientY - rect.top) / rect.height : 0;
 
     if (this.currentTool === 'comment') {
-      const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
-      const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
+      const xPercent = normX * 100;
+      const yPercent = normY * 100;
       this.addComment(pageNum, xPercent, yPercent, card);
       return;
     }
 
     if (this.currentTool === 'text') {
-      this.addTextAnnotation(pageNum, x, y, canvas, scaleX);
+      this.addTextAnnotation(pageNum, normX, normY, canvas, rect);
       return;
     }
 
     if (!['pen', 'line', 'arrow', 'callout', 'eraser'].includes(this.currentTool)) return;
 
     this.isDrawing = true;
-    this.startPt = { x, y };
-    this.currentPt = { x, y };
-    this.currentPath = [{ x, y }];
+    this.startPt = { x: normX, y: normY };
+    this.currentPt = { x: normX, y: normY };
+    this.currentPath = [{ x: normX, y: normY }];
 
     if (this.currentTool === 'eraser') {
-      this.eraseAtPoint(pageNum, x, y, canvas);
+      this.eraseAtPoint(pageNum, normX, normY, canvas);
     }
   }
 
@@ -159,24 +158,21 @@ export class AnnotationManager {
     if (!this.isDrawing) return;
 
     const rect = canvas.getBoundingClientRect();
-    const scaleX = rect.width > 0 ? canvas.width / rect.width : 1;
-    const scaleY = rect.height > 0 ? canvas.height / rect.height : 1;
-
-    const x = (e.clientX - rect.left) * scaleX;
-    const y = (e.clientY - rect.top) * scaleY;
-    this.currentPt = { x, y };
+    const normX = rect.width > 0 ? (e.clientX - rect.left) / rect.width : 0;
+    const normY = rect.height > 0 ? (e.clientY - rect.top) / rect.height : 0;
+    this.currentPt = { x: normX, y: normY };
 
     if (this.currentTool === 'eraser') {
-      this.eraseAtPoint(pageNum, x, y, canvas);
+      this.eraseAtPoint(pageNum, normX, normY, canvas);
       return;
     }
 
     if (this.currentTool === 'pen') {
-      this.currentPath.push({ x, y });
+      this.currentPath.push({ x: normX, y: normY });
     }
 
     this.redrawPageCanvas(pageNum, canvas);
-    this.drawActiveShapePreview(canvas, scaleX);
+    this.drawActiveShapePreview(canvas);
   }
 
   handlePointerUp(e, pageNum, canvas) {
@@ -186,20 +182,20 @@ export class AnnotationManager {
     this.ensurePageObject(pageNum);
 
     const rect = canvas.getBoundingClientRect();
-    const scaleX = rect.width > 0 ? canvas.width / rect.width : 1;
 
     if (this.currentTool === 'pen' && this.currentPath.length > 1) {
       const strokeObj = {
         tool: 'pen',
         color: this.currentColor,
         opacity: this.currentOpacity,
-        width: this.currentStrokeWidth * scaleX,
+        widthNorm: this.currentStrokeWidth / rect.width,
         path: [...this.currentPath]
       };
       this.annotations[pageNum].strokes.push(strokeObj);
       this.pushHistory('add_stroke', pageNum, strokeObj);
     } else if (['line', 'arrow'].includes(this.currentTool) && this.startPt && this.currentPt) {
-      if (Math.hypot(this.currentPt.x - this.startPt.x, this.currentPt.y - this.startPt.y) > 5) {
+      const distPx = Math.hypot((this.currentPt.x - this.startPt.x) * rect.width, (this.currentPt.y - this.startPt.y) * rect.height);
+      if (distPx > 5) {
         const isHighlighter = this.currentOpacity < 0.8;
         const shapeObj = {
           tool: this.currentTool,
@@ -209,13 +205,14 @@ export class AnnotationManager {
           y2: this.currentPt.y,
           color: this.currentColor,
           opacity: this.currentOpacity,
-          width: this.currentStrokeWidth * scaleX * (isHighlighter ? 3.5 : 1)
+          widthNorm: (this.currentStrokeWidth / rect.width) * (isHighlighter ? 3.5 : 1)
         };
         this.annotations[pageNum].shapes.push(shapeObj);
         this.pushHistory('add_shape', pageNum, shapeObj);
       }
     } else if (this.currentTool === 'callout' && this.startPt && this.currentPt) {
-      if (Math.hypot(this.currentPt.x - this.startPt.x, this.currentPt.y - this.startPt.y) > 5) {
+      const distPx = Math.hypot((this.currentPt.x - this.startPt.x) * rect.width, (this.currentPt.y - this.startPt.y) * rect.height);
+      if (distPx > 5) {
         const textStr = prompt('引出線テキストを入力してください (Callout Text):');
         if (textStr && textStr.trim() !== '') {
           const calloutObj = {
@@ -226,7 +223,7 @@ export class AnnotationManager {
             boxY: this.currentPt.y,
             text: textStr.trim(),
             color: this.currentColor,
-            fontSize: 13
+            fontSizeNorm: 13 / rect.height
           };
           this.annotations[pageNum].shapes.push(calloutObj);
           this.pushHistory('add_shape', pageNum, calloutObj);
@@ -240,7 +237,7 @@ export class AnnotationManager {
     this.redrawPageCanvas(pageNum, canvas);
   }
 
-  addTextAnnotation(pageNum, x, y, canvas) {
+  addTextAnnotation(pageNum, normX, normY, canvas, rect) {
     const textStr = prompt('テキストを入力してください (Enter Text):');
     if (!textStr || textStr.trim() === '') return;
 
@@ -248,11 +245,11 @@ export class AnnotationManager {
 
     const textObj = {
       tool: 'text',
-      x,
-      y,
+      x: normX,
+      y: normY,
       text: textStr.trim(),
       color: this.currentColor,
-      fontSize: 14
+      fontSizeNorm: 14 / (rect ? rect.height : canvas.height)
     };
 
     this.annotations[pageNum].textAnnots.push(textObj);
@@ -307,13 +304,18 @@ export class AnnotationManager {
     return true;
   }
 
-  drawActiveShapePreview(canvas, scaleX = 1) {
+  drawActiveShapePreview(canvas) {
     if (!this.startPt || !this.currentPt) return;
 
     const ctx = canvas.getContext('2d');
+    const cw = canvas.width;
+    const ch = canvas.height;
+    
     ctx.save();
 
     const isHighlighter = this.currentOpacity < 0.8;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = rect.width > 0 ? cw / rect.width : 1;
     const baseWidth = this.currentStrokeWidth * scaleX * (isHighlighter ? 3.5 : 1);
     const alpha = this.currentOpacity;
 
@@ -326,30 +328,30 @@ export class AnnotationManager {
     if (this.currentTool === 'pen') {
       if (this.currentPath && this.currentPath.length > 1) {
         ctx.beginPath();
-        ctx.moveTo(this.currentPath[0].x, this.currentPath[0].y);
+        ctx.moveTo(this.currentPath[0].x * cw, this.currentPath[0].y * ch);
         for (let i = 1; i < this.currentPath.length; i++) {
-          ctx.lineTo(this.currentPath[i].x, this.currentPath[i].y);
+          ctx.lineTo(this.currentPath[i].x * cw, this.currentPath[i].y * ch);
         }
         ctx.stroke();
       }
     } else if (this.currentTool === 'line') {
       ctx.beginPath();
-      ctx.moveTo(this.startPt.x, this.startPt.y);
-      ctx.lineTo(this.currentPt.x, this.currentPt.y);
+      ctx.moveTo(this.startPt.x * cw, this.startPt.y * ch);
+      ctx.lineTo(this.currentPt.x * cw, this.currentPt.y * ch);
       ctx.stroke();
     } else if (this.currentTool === 'arrow') {
-      this.drawArrowOnCanvas(ctx, this.startPt.x, this.startPt.y, this.currentPt.x, this.currentPt.y, baseWidth, this.currentColor);
+      this.drawArrowOnCanvas(ctx, this.startPt.x * cw, this.startPt.y * ch, this.currentPt.x * cw, this.currentPt.y * ch, baseWidth, this.currentColor);
     } else if (this.currentTool === 'callout') {
-      this.drawArrowOnCanvas(ctx, this.currentPt.x, this.currentPt.y, this.startPt.x, this.startPt.y, 2 * scaleX, this.currentColor);
+      this.drawArrowOnCanvas(ctx, this.currentPt.x * cw, this.currentPt.y * ch, this.startPt.x * cw, this.startPt.y * ch, 2 * scaleX, this.currentColor);
       
       ctx.fillStyle = 'rgba(30, 41, 59, 0.85)';
       ctx.strokeStyle = this.currentColor;
       ctx.lineWidth = 1 * scaleX;
-      ctx.fillRect(this.currentPt.x, this.currentPt.y - 20 * scaleX, 100 * scaleX, 24 * scaleX);
-      ctx.strokeRect(this.currentPt.x, this.currentPt.y - 20 * scaleX, 100 * scaleX, 24 * scaleX);
+      ctx.fillRect((this.currentPt.x * cw), (this.currentPt.y * ch) - 20 * scaleX, 100 * scaleX, 24 * scaleX);
+      ctx.strokeRect((this.currentPt.x * cw), (this.currentPt.y * ch) - 20 * scaleX, 100 * scaleX, 24 * scaleX);
       ctx.fillStyle = '#ffffff';
       ctx.font = `${12 * scaleX}px sans-serif`;
-      ctx.fillText('引出線テキスト', this.currentPt.x + 6 * scaleX, this.currentPt.y - 4 * scaleX);
+      ctx.fillText('引出線テキスト', (this.currentPt.x * cw) + 6 * scaleX, (this.currentPt.y * ch) - 4 * scaleX);
     }
 
     ctx.restore();
@@ -362,20 +364,25 @@ export class AnnotationManager {
     const pageData = this.annotations[pageNum];
     if (!pageData) return;
 
+    const cw = canvas.width;
+    const ch = canvas.height;
+
     // 1. Redraw Freehand & Highlighter Strokes
     if (this.layerVisibility.strokes) {
       (pageData.strokes || []).forEach(stroke => {
         if (stroke.path.length < 2) return;
         ctx.save();
         ctx.beginPath();
-        ctx.moveTo(stroke.path[0].x, stroke.path[0].y);
+        // Check if norm coordinate, else fallback to old un-normalized
+        const isNorm = stroke.widthNorm !== undefined;
+        ctx.moveTo(isNorm ? stroke.path[0].x * cw : stroke.path[0].x, isNorm ? stroke.path[0].y * ch : stroke.path[0].y);
         for (let i = 1; i < stroke.path.length; i++) {
-          ctx.lineTo(stroke.path[i].x, stroke.path[i].y);
+          ctx.lineTo(isNorm ? stroke.path[i].x * cw : stroke.path[i].x, isNorm ? stroke.path[i].y * ch : stroke.path[i].y);
         }
 
         ctx.globalAlpha = stroke.opacity !== undefined ? stroke.opacity : (stroke.tool === 'highlighter' ? 0.35 : 1.0);
         ctx.strokeStyle = stroke.color;
-        ctx.lineWidth = stroke.width;
+        ctx.lineWidth = stroke.widthNorm ? (stroke.widthNorm * cw) : stroke.width;
         ctx.lineCap = (stroke.tool === 'highlighter' || (stroke.opacity && stroke.opacity < 0.8)) ? 'square' : 'round';
         ctx.stroke();
         ctx.restore();
@@ -385,36 +392,40 @@ export class AnnotationManager {
     // 2. Redraw Vector Shapes (Lines, Arrows, Callouts)
     if (this.layerVisibility.shapes) {
       (pageData.shapes || []).forEach(shape => {
+        const isNorm = shape.widthNorm !== undefined || shape.fontSizeNorm !== undefined;
         if (shape.tool === 'line' || shape.tool === 'highlighter_line') {
           const isHighlighter = shape.opacity !== undefined && shape.opacity < 0.8;
           ctx.save();
           ctx.beginPath();
-          ctx.moveTo(shape.x1, shape.y1);
-          ctx.lineTo(shape.x2, shape.y2);
+          ctx.moveTo(isNorm ? shape.x1 * cw : shape.x1, isNorm ? shape.y1 * ch : shape.y1);
+          ctx.lineTo(isNorm ? shape.x2 * cw : shape.x2, isNorm ? shape.y2 * ch : shape.y2);
           ctx.globalAlpha = shape.opacity !== undefined ? shape.opacity : 1.0;
           ctx.strokeStyle = shape.color;
-          ctx.lineWidth = shape.width;
+          ctx.lineWidth = shape.widthNorm ? (shape.widthNorm * cw) : shape.width;
           ctx.lineCap = isHighlighter ? 'square' : 'round';
           ctx.stroke();
           ctx.restore();
         } else if (shape.tool === 'arrow') {
-          this.drawArrowOnCanvas(ctx, shape.x1, shape.y1, shape.x2, shape.y2, shape.width, shape.color);
+          this.drawArrowOnCanvas(ctx, isNorm ? shape.x1 * cw : shape.x1, isNorm ? shape.y1 * ch : shape.y1, isNorm ? shape.x2 * cw : shape.x2, isNorm ? shape.y2 * ch : shape.y2, shape.widthNorm ? (shape.widthNorm * cw) : shape.width, shape.color);
         } else if (shape.tool === 'callout') {
-          this.drawArrowOnCanvas(ctx, shape.boxX, shape.boxY, shape.targetX, shape.targetY, 2, shape.color);
+          this.drawArrowOnCanvas(ctx, isNorm ? shape.boxX * cw : shape.boxX, isNorm ? shape.boxY * ch : shape.boxY, isNorm ? shape.targetX * cw : shape.targetX, isNorm ? shape.targetY * ch : shape.targetY, 2 * (cw / (canvas.clientWidth || cw)), shape.color);
 
-          ctx.font = `${shape.fontSize || 13}px sans-serif`;
+          const fontSize = shape.fontSizeNorm ? (shape.fontSizeNorm * ch) : (shape.fontSize || 13);
+          ctx.font = `${fontSize}px sans-serif`;
           const metrics = ctx.measureText(shape.text);
           const boxWidth = metrics.width + 16;
-          const boxHeight = (shape.fontSize || 13) + 12;
+          const boxHeight = fontSize + 12;
 
           ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
           ctx.strokeStyle = shape.color;
           ctx.lineWidth = 1.5;
-          ctx.fillRect(shape.boxX, shape.boxY - boxHeight + 4, boxWidth, boxHeight);
-          ctx.strokeRect(shape.boxX, shape.boxY - boxHeight + 4, boxWidth, boxHeight);
+          const boxX = isNorm ? shape.boxX * cw : shape.boxX;
+          const boxY = isNorm ? shape.boxY * ch : shape.boxY;
+          ctx.fillRect(boxX, boxY - boxHeight + 4, boxWidth, boxHeight);
+          ctx.strokeRect(boxX, boxY - boxHeight + 4, boxWidth, boxHeight);
 
           ctx.fillStyle = '#ffffff';
-          ctx.fillText(shape.text, shape.boxX + 8, shape.boxY - 4);
+          ctx.fillText(shape.text, boxX + 8, boxY - 4);
         }
         ctx.restore();
       });
@@ -425,8 +436,10 @@ export class AnnotationManager {
       (pageData.textAnnots || []).forEach(t => {
         ctx.save();
         ctx.fillStyle = t.color;
-        ctx.font = `${t.fontSize || 14}px sans-serif`;
-        ctx.fillText(t.text, t.x, t.y);
+        const isNorm = t.fontSizeNorm !== undefined;
+        const fontSize = t.fontSizeNorm ? (t.fontSizeNorm * ch) : (t.fontSize || 14);
+        ctx.font = `${fontSize}px sans-serif`;
+        ctx.fillText(t.text, isNorm ? t.x * cw : t.x, isNorm ? t.y * ch : t.y);
         ctx.restore();
       });
     }
@@ -452,27 +465,47 @@ export class AnnotationManager {
     ctx.fill();
   }
 
-  eraseAtPoint(pageNum, x, y, canvas) {
+  eraseAtPoint(pageNum, normX, normY, canvas) {
     const pageData = this.annotations[pageNum];
     if (!pageData) return;
 
-    const threshold = 18;
+    const rect = canvas.getBoundingClientRect();
+    
+    // Calculate distance in CSS pixel space to accurately represent touch threshold
+    const isNear = (nx, ny, oldX, oldY, isNorm) => {
+        if (isNorm) {
+            const dx = (nx - normX) * rect.width;
+            const dy = (ny - normY) * rect.height;
+            return Math.hypot(dx, dy) < 18;
+        } else {
+            // Backward compatibility for old pixel annotations
+            // oldX and oldY are in backing store space, so divide by scaleX to get CSS px
+            const scaleX = rect.width > 0 ? canvas.width / rect.width : 1;
+            const scaleY = rect.height > 0 ? canvas.height / rect.height : 1;
+            const px = normX * rect.width * scaleX;
+            const py = normY * rect.height * scaleY;
+            return Math.hypot(oldX - px, oldY - py) < (18 * scaleX);
+        }
+    };
 
     pageData.strokes = (pageData.strokes || []).filter(stroke => {
-      return !stroke.path.some(pt => Math.hypot(pt.x - x, pt.y - y) < threshold);
+      const isNorm = stroke.widthNorm !== undefined;
+      return !stroke.path.some(pt => isNear(pt.x, pt.y, pt.x, pt.y, isNorm));
     });
 
     pageData.shapes = (pageData.shapes || []).filter(shape => {
+      const isNorm = shape.widthNorm !== undefined || shape.fontSizeNorm !== undefined;
       if (shape.tool === 'line' || shape.tool === 'arrow') {
-        return Math.hypot(shape.x1 - x, shape.y1 - y) > threshold && Math.hypot(shape.x2 - x, shape.y2 - y) > threshold;
+        return !isNear(shape.x1, shape.y1, shape.x1, shape.y1, isNorm) && !isNear(shape.x2, shape.y2, shape.x2, shape.y2, isNorm);
       } else if (shape.tool === 'callout') {
-        return Math.hypot(shape.targetX - x, shape.targetY - y) > threshold && Math.hypot(shape.boxX - x, shape.boxY - y) > threshold;
+        return !isNear(shape.targetX, shape.targetY, shape.targetX, shape.targetY, isNorm) && !isNear(shape.boxX, shape.boxY, shape.boxX, shape.boxY, isNorm);
       }
       return true;
     });
 
     pageData.textAnnots = (pageData.textAnnots || []).filter(t => {
-      return Math.hypot(t.x - x, t.y - y) > threshold;
+      const isNorm = t.fontSizeNorm !== undefined;
+      return !isNear(t.x, t.y, t.x, t.y, isNorm);
     });
 
     this.redrawPageCanvas(pageNum, canvas);

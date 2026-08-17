@@ -64,20 +64,21 @@ export class PDFExporter {
       for (const stroke of strokes) {
         if (!stroke.path || stroke.path.length < 2) continue;
         const rgbColor = this.hexToRgb(stroke.color);
+        const isNorm = stroke.widthNorm !== undefined;
 
         for (let i = 0; i < stroke.path.length - 1; i++) {
           const pt1 = stroke.path[i];
           const pt2 = stroke.path[i + 1];
 
-          const x1 = pt1.x * scaleX;
-          const y1 = pageHeight - (pt1.y * scaleY);
-          const x2 = pt2.x * scaleX;
-          const y2 = pageHeight - (pt2.y * scaleY);
+          const x1 = isNorm ? pt1.x * pageWidth : pt1.x * scaleX;
+          const y1 = pageHeight - (isNorm ? pt1.y * pageHeight : pt1.y * scaleY);
+          const x2 = isNorm ? pt2.x * pageWidth : pt2.x * scaleX;
+          const y2 = pageHeight - (isNorm ? pt2.y * pageHeight : pt2.y * scaleY);
 
           page.drawLine({
             start: { x: x1, y: y1 },
             end: { x: x2, y: y2 },
-            thickness: stroke.width * scaleX,
+            thickness: isNorm ? stroke.widthNorm * pageWidth : stroke.width * scaleX,
             color: rgb(rgbColor.r, rgbColor.g, rgbColor.b),
             opacity: stroke.tool === 'highlighter' ? 0.35 : 1.0,
           });
@@ -88,50 +89,52 @@ export class PDFExporter {
       const shapes = pageAnnots.shapes || [];
       for (const shape of shapes) {
         const rgbColor = this.hexToRgb(shape.color || '#6366f1');
+        const isNorm = shape.widthNorm !== undefined || shape.fontSizeNorm !== undefined;
 
         if (shape.tool === 'line') {
-          const x1 = shape.x1 * scaleX;
-          const y1 = pageHeight - (shape.y1 * scaleY);
-          const x2 = shape.x2 * scaleX;
-          const y2 = pageHeight - (shape.y2 * scaleY);
+          const x1 = isNorm ? shape.x1 * pageWidth : shape.x1 * scaleX;
+          const y1 = pageHeight - (isNorm ? shape.y1 * pageHeight : shape.y1 * scaleY);
+          const x2 = isNorm ? shape.x2 * pageWidth : shape.x2 * scaleX;
+          const y2 = pageHeight - (isNorm ? shape.y2 * pageHeight : shape.y2 * scaleY);
 
           page.drawLine({
             start: { x: x1, y: y1 },
             end: { x: x2, y: y2 },
-            thickness: (shape.width || 2) * scaleX,
+            thickness: isNorm ? shape.widthNorm * pageWidth : (shape.width || 2) * scaleX,
             color: rgb(rgbColor.r, rgbColor.g, rgbColor.b)
           });
         } else if (shape.tool === 'arrow') {
-          const x1 = shape.x1 * scaleX;
-          const y1 = pageHeight - (shape.y1 * scaleY);
-          const x2 = shape.x2 * scaleX;
-          const y2 = pageHeight - (shape.y2 * scaleY);
+          const x1 = isNorm ? shape.x1 * pageWidth : shape.x1 * scaleX;
+          const y1 = pageHeight - (isNorm ? shape.y1 * pageHeight : shape.y1 * scaleY);
+          const x2 = isNorm ? shape.x2 * pageWidth : shape.x2 * scaleX;
+          const y2 = pageHeight - (isNorm ? shape.y2 * pageHeight : shape.y2 * scaleY);
 
           page.drawLine({
             start: { x: x1, y: y1 },
             end: { x: x2, y: y2 },
-            thickness: (shape.width || 2) * scaleX,
+            thickness: isNorm ? shape.widthNorm * pageWidth : (shape.width || 2) * scaleX,
             color: rgb(rgbColor.r, rgbColor.g, rgbColor.b)
           });
         } else if (shape.tool === 'callout') {
-          const targetX = shape.targetX * scaleX;
-          const targetY = pageHeight - (shape.targetY * scaleY);
-          const boxX = shape.boxX * scaleX;
-          const boxY = pageHeight - (shape.boxY * scaleY);
+          const targetX = isNorm ? shape.targetX * pageWidth : shape.targetX * scaleX;
+          const targetY = pageHeight - (isNorm ? shape.targetY * pageHeight : shape.targetY * scaleY);
+          const boxX = isNorm ? shape.boxX * pageWidth : shape.boxX * scaleX;
+          const boxY = pageHeight - (isNorm ? shape.boxY * pageHeight : shape.boxY * scaleY);
 
           // Leader line
           page.drawLine({
             start: { x: boxX, y: boxY },
             end: { x: targetX, y: targetY },
-            thickness: 1.5 * scaleX,
+            thickness: isNorm ? 0.0025 * pageWidth : 1.5 * scaleX,
             color: rgb(rgbColor.r, rgbColor.g, rgbColor.b)
           });
 
           // Text string
+          const fontSize = isNorm ? shape.fontSizeNorm * pageHeight : 10 * scaleX;
           page.drawText(`[引出: ${shape.text}]`, {
             x: Math.max(10, boxX),
             y: Math.max(10, boxY),
-            size: 10 * scaleX,
+            size: fontSize,
             color: rgb(rgbColor.r, rgbColor.g, rgbColor.b)
           });
         }
@@ -141,13 +144,14 @@ export class PDFExporter {
       const textAnnots = pageAnnots.textAnnots || [];
       for (const t of textAnnots) {
         const rgbColor = this.hexToRgb(t.color || '#6366f1');
-        const x = t.x * scaleX;
-        const y = pageHeight - (t.y * scaleY);
+        const isNorm = t.fontSizeNorm !== undefined;
+        const x = isNorm ? t.x * pageWidth : t.x * scaleX;
+        const y = pageHeight - (isNorm ? t.y * pageHeight : t.y * scaleY);
 
         page.drawText(t.text, {
           x: Math.max(10, x),
           y: Math.max(10, y),
-          size: (t.fontSize || 14) * scaleX,
+          size: isNorm ? t.fontSizeNorm * pageHeight : (t.fontSize || 14) * scaleX,
           color: rgb(rgbColor.r, rgbColor.g, rgbColor.b)
         });
       }
