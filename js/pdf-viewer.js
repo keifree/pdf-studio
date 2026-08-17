@@ -205,7 +205,7 @@ export class PDFViewer {
     };
 
     if (this.ocgConfig) {
-      renderContext.optionalContentConfig = this.ocgConfig;
+      renderContext.optionalContentConfigPromise = Promise.resolve(this.ocgConfig);
     }
 
     await page.render(renderContext).promise;
