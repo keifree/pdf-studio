@@ -10,7 +10,7 @@ export class PDFExporter {
       throw new Error('pdf-lib library is not loaded');
     }
 
-    const { PDFDocument, PDFName, PDFOperator, rgb } = window.PDFLib;
+    const { PDFDocument, PDFName, PDFString, PDFOperator, rgb } = window.PDFLib;
 
     const pdfDoc = await PDFDocument.load(originalBuffer);
     const catalog = pdfDoc.catalog;
@@ -18,7 +18,7 @@ export class PDFExporter {
     // --- Create OCG for AntigravityLayer ---
     const ocgDict = pdfDoc.context.obj({
       Type: 'OCG',
-      Name: 'AntigravityLayer'
+      Name: PDFString.of('AntigravityLayer')
     });
     const ocgRef = pdfDoc.context.register(ocgDict);
 
